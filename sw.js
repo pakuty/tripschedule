@@ -1,4 +1,4 @@
-const CACHE_NAME = 'schedule-app-v1';
+const CACHE_NAME = 'schedule-app-v5';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -8,7 +8,6 @@ const ASSETS_TO_CACHE = [
   './manifest.json'
 ];
 
-// インストール時に全ファイルを端末ストレージにキャッシュ保存
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -17,7 +16,6 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// 有効化時に古いキャッシュをクリア
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -28,7 +26,6 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// フェッチ要求（Wi-Fiが切れていてもキャッシュから即座に返す！）
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
@@ -36,7 +33,6 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
       return fetch(event.request).catch(() => {
-        // オフライン時のフォールバック
         return caches.match('./index.html');
       });
     })

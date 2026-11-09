@@ -12,7 +12,6 @@
   <title>日程管理アプリ</title>
   <link rel="stylesheet" href="style.css">
   <script>
-    // オフライン自動保存（Service Worker登録）
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW reg error', err));
@@ -54,7 +53,7 @@
           <button id="btn-open-add-schedule" class="btn-primary-small">+ 予定を追加</button>
         </div>
 
-        <p class="timeline-hint">予定を押すと「現在の予定にする」や「内容変更」ができます</p>
+        <p class="timeline-hint">予定を押すと操作メニュー、長押しで並び替えできます</p>
 
         <!-- 本日のタイムライン一覧 -->
         <div id="schedule-list" class="schedule-timeline">
@@ -81,6 +80,7 @@
               <span id="now-spot-badge" class="type-badge badge-spot">場所</span>
             </div>
             <h3 id="now-spot-title" class="spot-title">予定がありません</h3>
+            <p id="now-spot-sub" class="spot-sub-info"></p>
             <p id="now-spot-time" class="spot-time">--:-- 〜 --:--</p>
             <p id="now-spot-memo" class="spot-memo">しおりから予定を追加してください</p>
           </div>
@@ -94,6 +94,7 @@
               <span id="next-spot-badge" class="type-badge badge-spot">場所</span>
             </div>
             <h3 id="next-spot-title" class="spot-title">次の予定はありません</h3>
+            <p id="next-spot-sub" class="spot-sub-info"></p>
             <p id="next-spot-time" class="spot-time">--:-- 開始予定</p>
             <p id="next-spot-memo" class="spot-memo"></p>
           </div>
@@ -186,7 +187,7 @@
           <button id="btn-open-edit-content" class="btn-action-secondary">
             <div class="btn-action-text">
               <strong>内容を変更する</strong>
-              <small>時間、場所名、乗車・降車駅などを編集します</small>
+              <small>時間、場所名、駅名、乗り場などを編集します</small>
             </div>
           </button>
 
@@ -226,15 +227,41 @@
           </div>
         </div>
 
-        <!-- 1. 場所・予定名の場合の入力 -->
-        <div id="field-spot-container" class="form-group">
-          <label for="form-title">場所・予定名 *</label>
-          <input type="text" id="form-title" placeholder="例: 清水寺、祇園でランチ" class="input-text">
+        <!-- 1. 場所・予定名の場合の入力（最寄り駅を追加、路線・駅は削除） -->
+        <div id="field-spot-container" class="form-group-stack">
+          <div class="form-group">
+            <label for="form-title">場所・予定名 *</label>
+            <input type="text" id="form-title" placeholder="例: 清水寺、祇園でランチ" class="input-text">
+          </div>
+          <div class="form-group mt-2">
+            <label for="form-nearest-station">最寄り駅（任意）</label>
+            <input type="text" id="form-nearest-station" placeholder="例: 清水五条駅、祇園四条駅" class="input-text">
+          </div>
         </div>
 
-        <!-- 2. 交通機関の場合の入力（乗車駅と降車駅の欄） -->
+        <!-- 2. 交通機関の場合の入力（乗車駅・降車駅を一番上へ、乗り場欄を追加） -->
         <div id="field-transit-container" class="transit-container hidden">
-          <div class="form-group">
+          <!-- 乗車駅・降車駅（一番上に配置） -->
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="form-departure-station">乗車駅（出発地） *</label>
+              <input type="text" id="form-departure-station" placeholder="例: 京都駅" class="input-text">
+            </div>
+            <div class="station-arrow-col">&rarr;</div>
+            <div class="form-group flex-1">
+              <label for="form-arrival-station">降車駅（到着地） *</label>
+              <input type="text" id="form-arrival-station" placeholder="例: 稲荷駅" class="input-text">
+            </div>
+          </div>
+
+          <!-- 何番乗り場か -->
+          <div class="form-group mt-2">
+            <label for="form-transit-platform">乗り場（番線）（任意）</label>
+            <input type="text" id="form-transit-platform" placeholder="例: 8番のりば、D2乗り場" class="input-text">
+          </div>
+
+          <!-- 路線・交通手段 -->
+          <div class="form-group mt-2">
             <label for="form-transit-line">路線・交通手段（任意）</label>
             <input type="text" id="form-transit-line" placeholder="例: JR奈良線、市バス206系統、徒歩" class="input-text">
             <div class="transit-chips mt-1">
@@ -247,22 +274,10 @@
               <button type="button" class="transit-chip" data-val="タクシー">タクシー</button>
             </div>
           </div>
-
-          <div class="form-row mt-2">
-            <div class="form-group flex-1">
-              <label for="form-departure-station">乗車駅（出発地） *</label>
-              <input type="text" id="form-departure-station" placeholder="例: 京都駅" class="input-text">
-            </div>
-            <div class="station-arrow-col">&rarr;</div>
-            <div class="form-group flex-1">
-              <label for="form-arrival-station">降車駅（到着地） *</label>
-              <input type="text" id="form-arrival-station" placeholder="例: 稲荷駅" class="input-text">
-            </div>
-          </div>
         </div>
 
         <!-- 時間入力 -->
-        <div class="form-row">
+        <div class="form-row mt-2">
           <div class="form-group flex-1">
             <label for="form-start-time" id="label-start-time">開始・出発時刻 *</label>
             <input type="time" id="form-start-time" required class="input-text">
@@ -273,9 +288,9 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="form-memo">メモ（番線・注意点・予約など）</label>
-          <input type="text" id="form-memo" placeholder="例: 8番のりば、予約済みなど" class="input-text">
+        <div class="form-group mt-2">
+          <label for="form-memo">メモ（注意点・予約・料金など）</label>
+          <input type="text" id="form-memo" placeholder="例: 乗換注意、予約番号など" class="input-text">
         </div>
 
         <div class="modal-actions">
@@ -309,6 +324,9 @@
       </form>
     </div>
   </div>
+
+  <!-- 操作フィードバック用トースト通知 -->
+  <div id="app-toast" class="app-toast"></div>
 
   <script src="app.js"></script>
 </body>

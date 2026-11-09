@@ -1,0 +1,2508 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#FFFFFF">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="icon" href="icon.png">
+  <link rel="manifest" href="manifest.json">
+  <title>日程管理アプリ</title>
+  <style>
+/* ===================================================
+   日程管理アプリ - スタイルシート (絵文字なし・ミニマルデザイン)
+   =================================================== */
+
+:root {
+  --primary-red: #D93829;       /* 朱色・現在予定の赤枠カラー */
+  --primary-red-bg: #FFF5F4;    /* 現在予定の薄い赤背景 */
+  --text-main: #22252A;
+  --text-sub: #68707D;
+  --bg-app: #F5F6F8;
+  --card-bg: #FFFFFF;
+  --border-color: #E2E5E9;
+  --accent-blue: #2463A7;
+  --accent-blue-bg: #EEF5FB;
+  --radius-lg: 14px;
+  --radius-md: 10px;
+  --radius-sm: 6px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  background-color: #DFE2E6;
+  color: var(--text-main);
+  line-height: 1.5;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+/* スマホ表示フレーム */
+.mobile-frame {
+  width: 100%;
+  max-width: 440px;
+  min-height: 100vh;
+  background-color: var(--bg-app);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.08);
+}
+
+/* ヘッダー */
+.app-header {
+  background-color: #FFFFFF;
+  border-bottom: 1px solid var(--border-color);
+  padding: 12px 18px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.header-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.header-subtitle {
+  font-size: 12px;
+  color: var(--text-sub);
+  margin-top: 1px;
+}
+
+.current-time-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #F0F2F5;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4A505A;
+}
+
+.time-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #2ECC71;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* メインコンテンツ領域 */
+.app-content {
+  flex: 1;
+  padding: 14px 14px 84px 14px;
+  overflow-y: auto;
+}
+
+.view-panel {
+  display: none;
+}
+
+.view-panel.active {
+  display: block;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.panel-section-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.summary-sub {
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.btn-primary-small {
+  background-color: var(--primary-red);
+  color: #FFFFFF;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.btn-primary-small:active {
+  opacity: 0.9;
+}
+
+.btn-secondary-small {
+  background-color: #EAECEF;
+  color: var(--text-main);
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+/* ===================================================
+   本日のしおりヘッダーカード
+   =================================================== */
+.today-header-card {
+  background-color: #FFFFFF;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.today-header-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.today-badge {
+  background-color: var(--primary-red);
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.today-date-text {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.today-count-text {
+  font-size: 12px;
+  color: var(--text-sub);
+  margin-left: 4px;
+}
+
+.timeline-hint {
+  font-size: 12px;
+  color: var(--text-sub);
+  margin-bottom: 12px;
+}
+
+/* ===================================================
+   ① しおり (予定一覧)
+   =================================================== */
+.schedule-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.schedule-card {
+  background-color: var(--card-bg);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  border: 1.5px solid var(--border-color);
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-y;
+}
+
+.schedule-card:active {
+  transform: scale(0.99);
+}
+
+/* ★ 現在の予定は赤く囲まれる表示 ★ */
+.schedule-card.is-current {
+  border: 2.5px solid var(--primary-red) !important;
+  background-color: var(--primary-red-bg);
+  box-shadow: 0 4px 16px rgba(217, 56, 41, 0.18);
+}
+
+.schedule-card.is-current::before {
+  content: "現在";
+  position: absolute;
+  top: -10px;
+  right: 14px;
+  background-color: var(--primary-red);
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 8px;
+  letter-spacing: 0.5px;
+}
+
+.schedule-card.is-past {
+  opacity: 0.55;
+  background-color: #FAFAFA;
+}
+
+/* 交通機関カードの個別スタイル */
+.schedule-card.is-transit {
+  border-left: 5px solid var(--accent-blue);
+  background-color: #F8FBFE;
+}
+
+.schedule-card.is-transit.is-current {
+  border: 2.5px solid var(--primary-red) !important;
+  border-left: 6px solid var(--primary-red) !important;
+  background-color: var(--primary-red-bg);
+}
+
+.card-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.type-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.badge-spot {
+  background-color: #F0F2F5;
+  color: #4A505A;
+}
+
+.badge-transit {
+  background-color: var(--accent-blue-bg);
+  color: var(--accent-blue);
+}
+
+.schedule-time {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-blue);
+}
+
+.schedule-card.is-current .schedule-time {
+  color: var(--primary-red);
+}
+
+.schedule-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+
+/* ★ ご要望: 乗車駅と降車駅どちらもハッキリ見える表示 ★ */
+.schedule-stations-row {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.station-badge {
+  background-color: #FFFFFF;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid #D2DFEE;
+  color: var(--accent-blue);
+}
+
+.station-arrow {
+  color: var(--accent-blue);
+  font-size: 14px;
+}
+
+.transit-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-sub);
+  margin-bottom: 4px;
+}
+
+.platform-badge {
+  background-color: #FFF3DC;
+  color: #B26A00;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid #FFE2AA;
+}
+
+.nearest-badge {
+  display: inline-block;
+  background-color: #F0F2F5;
+  color: #555E6D;
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.schedule-memo {
+  font-size: 13px;
+  color: var(--text-sub);
+  margin-top: 2px;
+}
+
+/* ===================================================
+   ② いま・つぎ
+   =================================================== */
+.timing-card {
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  border: 1px solid transparent;
+}
+
+.timing-card.status-relax {
+  background-color: #EBF8EE;
+  border-color: #C3E7CB;
+  color: #206E34;
+}
+
+.timing-card.status-warning {
+  background-color: #FFF9E6;
+  border-color: #FFE599;
+  color: #945B00;
+}
+
+.timing-card.status-move {
+  background-color: #E8F2FC;
+  border-color: #BCD9F6;
+  color: #175294;
+}
+
+.timing-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.timing-message {
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.card {
+  background-color: var(--card-bg);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  margin-bottom: 14px;
+  border: 1.5px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.card-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.tag-now {
+  background-color: var(--primary-red);
+  color: #FFFFFF;
+}
+
+.tag-next {
+  background-color: #EEF2F6;
+  color: #434B58;
+}
+
+.spot-type-badge-wrap {
+  margin-bottom: 4px;
+}
+
+.spot-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--text-main);
+}
+
+.spot-sub-info {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-blue);
+  margin-bottom: 4px;
+}
+
+.spot-time {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-blue);
+  margin-bottom: 6px;
+}
+
+.spot-memo {
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
+.action-buttons-wrap {
+  margin-top: 18px;
+}
+
+.btn-main-action {
+  width: 100%;
+  padding: 15px;
+  background-color: var(--primary-red);
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(217, 56, 41, 0.25);
+}
+
+.btn-main-action:active {
+  transform: scale(0.98);
+}
+
+/* ===================================================
+   ③ 過去のしおり
+   =================================================== */
+.section-box {
+  background-color: #FFFFFF;
+  border-radius: var(--radius-md);
+  padding: 16px;
+  border: 1px solid var(--border-color);
+}
+
+.mt-1 {
+  margin-top: 4px;
+}
+
+.mt-2 {
+  margin-top: 8px;
+}
+
+.mt-3 {
+  margin-top: 12px;
+}
+
+.past-day-navigator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.btn-day-nav {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background-color: #F0F2F5;
+  border: none;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-day-nav:active {
+  background-color: #E2E5E9;
+}
+
+.past-day-center {
+  flex: 1;
+}
+
+.day-select-dropdown {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+  background-color: #FAFAFA;
+}
+
+/* ===================================================
+   下部3ボタン ナビゲーションバー
+   =================================================== */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 440px;
+  height: 62px;
+  background-color: #FFFFFF;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  z-index: 30;
+}
+
+.nav-button {
+  flex: 1;
+  height: 100%;
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: #8C939E;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+.nav-indicator {
+  width: 16px;
+  height: 3px;
+  background-color: transparent;
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+
+.nav-button.active .nav-indicator {
+  background-color: var(--primary-red);
+}
+
+.nav-text {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.nav-button.active .nav-text {
+  color: var(--primary-red);
+}
+
+/* ===================================================
+   モーダル & ポップアップ
+   =================================================== */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.modal.hidden {
+  display: none !important;
+}
+
+.modal-backdrop {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  background-color: #FFFFFF;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 20px;
+  z-index: 51;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.modal-header h3 {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: var(--text-sub);
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.spot-action-info-box {
+  background-color: #F8F9FA;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+}
+
+.action-item-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.action-item-time {
+  font-size: 13px;
+  color: var(--accent-blue);
+  margin-top: 2px;
+}
+
+.spot-action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn-action-primary, .btn-action-secondary, .btn-action-danger {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.btn-action-primary {
+  background-color: var(--primary-red-bg);
+  border-color: #F8C8C4;
+  color: var(--primary-red);
+}
+
+.btn-action-secondary {
+  background-color: #F5F6F8;
+  border-color: var(--border-color);
+  color: var(--text-main);
+}
+
+.btn-action-danger {
+  background-color: #FFFFFF;
+  border-color: #FBD5D5;
+  color: #DC3545;
+}
+
+.btn-action-text strong {
+  display: block;
+  font-size: 15px;
+}
+
+.btn-action-text small {
+  display: block;
+  font-size: 12px;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.form-label-bold {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.type-selector-tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.type-tab-label {
+  flex: 1;
+  cursor: pointer;
+}
+
+.type-tab-label input[type="radio"] {
+  display: none;
+}
+
+.type-tab-card {
+  display: block;
+  padding: 9px;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  background-color: #F0F2F5;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-sub);
+  border: 1.5px solid transparent;
+}
+
+.type-tab-label input[type="radio"]:checked + .type-tab-card {
+  background-color: #FFFFFF;
+  border-color: var(--primary-red);
+  color: var(--primary-red);
+  box-shadow: 0 2px 6px rgba(217, 56, 41, 0.15);
+}
+
+/* 交通機関（乗車駅・降車駅）のレイアウト */
+.transit-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.form-group-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.station-arrow-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 22px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent-blue);
+}
+
+.transit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.transit-chip {
+  background: #F0F2F5;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #4A505A;
+  cursor: pointer;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-sub);
+}
+
+.form-row {
+  display: flex;
+  gap: 8px;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.input-text {
+  padding: 9px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  outline: none;
+  background-color: #FAFAFA;
+}
+
+.input-text:focus {
+  border-color: var(--primary-red);
+  background-color: #FFFFFF;
+}
+
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.flex-spacer {
+  flex: 1;
+}
+
+.btn-cancel {
+  background: #F0F2F5;
+  border: none;
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-submit {
+  background: var(--primary-red);
+  color: #FFFFFF;
+  border: none;
+  padding: 9px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-delete {
+  background: none;
+  border: none;
+  color: #DC3545;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ===================================================
+   予定の長押しドラッグ＆ドロップ並び替えスタイル
+   =================================================== */
+
+/* ドラッグ元のプレースホルダー */
+.schedule-card.is-dragging-original {
+  opacity: 0.35 !important;
+  border: 2px dashed #9EABC0 !important;
+  background-color: #F0F3F8 !important;
+  box-shadow: none !important;
+  transform: scale(0.98) !important;
+}
+
+/* 長押し中に浮き上がるゴースト要素 */
+.drag-ghost {
+  position: fixed !important;
+  z-index: 10000 !important;
+  pointer-events: none !important;
+  border-radius: var(--radius-md) !important;
+  background-color: #FFFFFF !important;
+  border: 2px solid var(--accent-blue) !important;
+  box-shadow: 0 14px 32px rgba(20, 45, 80, 0.28) !important;
+  transform: scale(1.03) !important;
+  opacity: 0.96 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  transition: transform 0.08s ease, box-shadow 0.08s ease !important;
+}
+
+.drag-ghost.is-current {
+  border: 2.5px solid var(--primary-red) !important;
+}
+
+/* 挿入位置を示す青いラインインジケーター */
+.drop-indicator {
+  height: 4px;
+  background-color: var(--accent-blue);
+  border-radius: 2px;
+  margin: 4px 0;
+  box-shadow: 0 0 10px rgba(36, 99, 167, 0.6);
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+.drop-indicator::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--accent-blue);
+}
+
+.drop-indicator::after {
+  content: "";
+  position: absolute;
+  right: -4px;
+  top: -4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--accent-blue);
+}
+
+/* カード右上の控えめなドラッグ用グリップアイコン */
+.drag-grip-icon {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 2.5px;
+  width: 16px;
+  height: 16px;
+  opacity: 0.35;
+  margin-left: 6px;
+  cursor: grab;
+}
+
+.drag-grip-icon span {
+  display: block;
+  width: 12px;
+  height: 2px;
+  background-color: #555E6D;
+  border-radius: 1px;
+}
+
+.schedule-card:active .drag-grip-icon {
+  opacity: 0.7;
+}
+
+/* 並び替え完了時のトースト通知 */
+.app-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background-color: rgba(30, 36, 46, 0.92);
+  color: #FFFFFF;
+  padding: 10px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  z-index: 99999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  white-space: nowrap;
+}
+
+.app-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+</style>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW reg error', err));
+      });
+    }
+  </script>
+</head>
+<body>
+
+  <!-- モバイルアプリコンテナ -->
+  <div class="mobile-frame">
+    
+    <!-- アプリ共通ヘッダー -->
+    <header class="app-header">
+      <div class="header-inner">
+        <div>
+          <h1 class="header-title">日程管理アプリ</h1>
+          <div id="header-date-sub" class="header-subtitle">--月--日</div>
+        </div>
+        <div class="current-time-badge">
+          <span class="time-dot"></span>
+          <span id="header-clock">09:00</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- メイン表示領域 -->
+    <main class="app-content">
+
+      <!-- ================= 画面①: しおり（本日の日程限定） ================= -->
+      <section id="view-schedule" class="view-panel">
+        
+        <div class="today-header-card">
+          <div class="today-header-info">
+            <span class="today-badge">本日</span>
+            <span id="main-day-label" class="today-date-text">--月--日</span>
+            <span id="main-day-spots-count" class="today-count-text">0件の予定</span>
+          </div>
+          <button id="btn-open-add-schedule" class="btn-primary-small">+ 予定を追加</button>
+        </div>
+
+        <p class="timeline-hint">予定を押すと操作メニュー、長押しで並び替えできます</p>
+
+        <!-- 本日のタイムライン一覧 -->
+        <div id="schedule-list" class="schedule-timeline">
+          <!-- JSで動的に本日の予定を出力 -->
+        </div>
+      </section>
+
+      <!-- ================= 画面②: いま・つぎ ================= -->
+      <section id="view-now-next" class="view-panel active">
+        
+        <!-- ステータス（移動タイミング） -->
+        <div id="timing-status-card" class="timing-card status-relax">
+          <div class="timing-body">
+            <div class="timing-label" id="timing-label">ステータス</div>
+            <div class="timing-message" id="timing-message">予定を追加してください</div>
+          </div>
+        </div>
+
+        <!-- 1. いまどこにいるか -->
+        <div class="card now-card">
+          <div class="card-tag tag-now">いまここ</div>
+          <div class="card-content">
+            <div class="spot-type-badge-wrap">
+              <span id="now-spot-badge" class="type-badge badge-spot">場所</span>
+            </div>
+            <h3 id="now-spot-title" class="spot-title">予定がありません</h3>
+            <p id="now-spot-sub" class="spot-sub-info"></p>
+            <p id="now-spot-time" class="spot-time">--:-- 〜 --:--</p>
+            <p id="now-spot-memo" class="spot-memo">しおりから予定を追加してください</p>
+          </div>
+        </div>
+
+        <!-- 2. 次の予定は何か -->
+        <div class="card next-card">
+          <div class="card-tag tag-next">つぎの予定</div>
+          <div class="card-content">
+            <div class="spot-type-badge-wrap">
+              <span id="next-spot-badge" class="type-badge badge-spot">場所</span>
+            </div>
+            <h3 id="next-spot-title" class="spot-title">次の予定はありません</h3>
+            <p id="next-spot-sub" class="spot-sub-info"></p>
+            <p id="next-spot-time" class="spot-time">--:-- 開始予定</p>
+            <p id="next-spot-memo" class="spot-memo"></p>
+          </div>
+        </div>
+
+        <!-- アクションボタン -->
+        <div class="action-buttons-wrap">
+          <button id="btn-next-action" class="btn-main-action" style="display: none;">
+            <span>次へ進む（移動・到着）</span>
+            <span class="btn-arrow">&rarr;</span>
+          </button>
+        </div>
+
+      </section>
+
+      <!-- ================= 画面③: 過去のしおり（過去日程・カレンダー） ================= -->
+      <section id="view-undecided" class="view-panel">
+        
+        <div class="section-box">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-section-title">過去の日程・しおり</h2>
+              <span class="summary-sub">前後の日程を切り替えて閲覧できます</span>
+            </div>
+            <button id="btn-open-add-day" class="btn-secondary-small">+ 日程追加</button>
+          </div>
+
+          <!-- 日程ナビゲーション -->
+          <div class="past-day-navigator">
+            <button id="btn-past-prev" class="btn-day-nav" title="前の日へ">&lt;</button>
+            <div class="past-day-center">
+              <select id="select-past-day" class="day-select-dropdown">
+                <!-- JSで動的に日付の選択肢を出力 -->
+              </select>
+            </div>
+            <button id="btn-past-next" class="btn-day-nav" title="次の日へ">&gt;</button>
+          </div>
+
+          <!-- 選択した日程のしおり一覧 -->
+          <div id="past-day-schedule-list" class="schedule-timeline mt-3">
+            <!-- JSで動的に予定一覧を出力 -->
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- 下部3ボタン ナビゲーションメニュー -->
+    <nav class="bottom-nav">
+      <button class="nav-button" data-view="schedule">
+        <span class="nav-indicator"></span>
+        <span class="nav-text">しおり</span>
+      </button>
+
+      <button class="nav-button active" data-view="now-next">
+        <span class="nav-indicator"></span>
+        <span class="nav-text">いま・つぎ</span>
+      </button>
+
+      <button class="nav-button" data-view="undecided">
+        <span class="nav-indicator"></span>
+        <span class="nav-text">過去のしおり</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- ポップアップモーダル: 予定カードをタップした時のメニュー -->
+  <div id="modal-spot-action" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="spot-action-title" class="modal-title">予定の操作</h3>
+        <button id="btn-close-spot-action" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="spot-action-body">
+        <div id="spot-action-info" class="spot-action-info-box">
+          <div id="spot-action-name" class="action-item-name"></div>
+          <div id="spot-action-time" class="action-item-time"></div>
+        </div>
+        <div class="spot-action-buttons">
+          <button id="btn-set-as-current" class="btn-action-primary">
+            <div class="btn-action-text">
+              <strong>現在の予定にする</strong>
+              <small>しおりで赤く囲み、現在地として設定します</small>
+            </div>
+          </button>
+          
+          <button id="btn-open-edit-content" class="btn-action-secondary">
+            <div class="btn-action-text">
+              <strong>内容を変更する</strong>
+              <small>時間、場所名、駅名、乗り場などを編集します</small>
+            </div>
+          </button>
+
+          <button id="btn-delete-from-action" class="btn-action-danger">
+            <div class="btn-action-text">
+              <strong>この予定を削除する</strong>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- モーダル: 予定・交通機関の追加・編集 -->
+  <div id="modal-edit-item" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-title">予定の追加</h3>
+        <button id="btn-close-modal" class="modal-close-btn">&times;</button>
+      </div>
+      <form id="schedule-form" class="modal-body">
+        <input type="hidden" id="form-item-id">
+        
+        <!-- 種別選択: 場所・予定名 or 交通機関 -->
+        <div class="form-group">
+          <label class="form-label-bold">追加する情報の種類 *</label>
+          <div class="type-selector-tabs">
+            <label class="type-tab-label">
+              <input type="radio" name="entry-type" value="spot" checked id="radio-type-spot">
+              <span class="type-tab-card">場所・予定名</span>
+            </label>
+            <label class="type-tab-label">
+              <input type="radio" name="entry-type" value="transit" id="radio-type-transit">
+              <span class="type-tab-card">交通機関・移動</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 1. 場所・予定名の場合の入力（最寄り駅を追加、路線・駅は削除） -->
+        <div id="field-spot-container" class="form-group-stack">
+          <div class="form-group">
+            <label for="form-title">場所・予定名 *</label>
+            <input type="text" id="form-title" placeholder="例: 清水寺、祇園でランチ" class="input-text">
+          </div>
+          <div class="form-group mt-2">
+            <label for="form-nearest-station">最寄り駅（任意）</label>
+            <input type="text" id="form-nearest-station" placeholder="例: 清水五条駅、祇園四条駅" class="input-text">
+          </div>
+        </div>
+
+        <!-- 2. 交通機関の場合の入力（乗車駅・降車駅を一番上へ、乗り場欄を追加） -->
+        <div id="field-transit-container" class="transit-container hidden">
+          <!-- 乗車駅・降車駅（一番上に配置） -->
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="form-departure-station">乗車駅（出発地） *</label>
+              <input type="text" id="form-departure-station" placeholder="例: 京都駅" class="input-text">
+            </div>
+            <div class="station-arrow-col">&rarr;</div>
+            <div class="form-group flex-1">
+              <label for="form-arrival-station">降車駅（到着地） *</label>
+              <input type="text" id="form-arrival-station" placeholder="例: 稲荷駅" class="input-text">
+            </div>
+          </div>
+
+          <!-- 何番乗り場か -->
+          <div class="form-group mt-2">
+            <label for="form-transit-platform">乗り場（番線）（任意）</label>
+            <input type="text" id="form-transit-platform" placeholder="例: 8番のりば、D2乗り場" class="input-text">
+          </div>
+
+          <!-- 路線・交通手段 -->
+          <div class="form-group mt-2">
+            <label for="form-transit-line">路線・交通手段（任意）</label>
+            <input type="text" id="form-transit-line" placeholder="例: JR奈良線、市バス206系統、徒歩" class="input-text">
+            <div class="transit-chips mt-1">
+              <button type="button" class="transit-chip" data-val="JR">JR</button>
+              <button type="button" class="transit-chip" data-val="地下鉄">地下鉄</button>
+              <button type="button" class="transit-chip" data-val="京阪">京阪</button>
+              <button type="button" class="transit-chip" data-val="阪急">阪急</button>
+              <button type="button" class="transit-chip" data-val="市バス">市バス</button>
+              <button type="button" class="transit-chip" data-val="徒歩">徒歩</button>
+              <button type="button" class="transit-chip" data-val="タクシー">タクシー</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 時間入力 -->
+        <div class="form-row mt-2">
+          <div class="form-group flex-1">
+            <label for="form-start-time" id="label-start-time">開始・出発時刻 *</label>
+            <input type="time" id="form-start-time" required class="input-text">
+          </div>
+          <div class="form-group flex-1">
+            <label for="form-end-time" id="label-end-time">終了・到着時刻</label>
+            <input type="time" id="form-end-time" class="input-text">
+          </div>
+        </div>
+
+        <div class="form-group mt-2">
+          <label for="form-memo">メモ（注意点・予約・料金など）</label>
+          <input type="text" id="form-memo" placeholder="例: 乗換注意、予約番号など" class="input-text">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="btn-delete-item" class="btn-delete hidden">削除</button>
+          <div class="flex-spacer"></div>
+          <button type="button" id="btn-cancel-modal" class="btn-cancel">キャンセル</button>
+          <button type="submit" class="btn-submit">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- モーダル: 新しい日程の追加 -->
+  <div id="modal-add-day" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>新しい日程を追加</h3>
+        <button id="btn-close-day-modal" class="modal-close-btn">&times;</button>
+      </div>
+      <form id="day-form" class="modal-body">
+        <div class="form-group">
+          <label for="new-day-date">日付 *</label>
+          <input type="date" id="new-day-date" required class="input-text">
+        </div>
+        <div class="modal-actions">
+          <div class="flex-spacer"></div>
+          <button type="button" id="btn-cancel-day-modal" class="btn-cancel">キャンセル</button>
+          <button type="submit" class="btn-submit">追加する</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 操作フィードバック用トースト通知 -->
+  <div id="app-toast" class="app-toast"></div>
+
+  <script>
+/**
+ * 日程管理アプリ - アプリケーションロジック (最寄り駅・乗降車駅・乗り場対応版)
+ */
+
+// --- 画面上エラー検知 ---
+window.addEventListener('error', function(e) {
+  let errBox = document.getElementById('debug-error-banner');
+  if (!errBox) {
+    errBox = document.createElement('div');
+    errBox.id = 'debug-error-banner';
+    errBox.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:#D93829;color:#fff;padding:10px;font-size:12px;z-index:9999;word-break:break-all;';
+    document.body.appendChild(errBox);
+  }
+  errBox.textContent = 'エラーが発生しました: ' + (e.message || e);
+});
+
+// --- 安全なストレージラッパー ---
+let inMemoryStore = {};
+const safeStorage = {
+  getItem: function(key) {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        return window.localStorage.getItem(key);
+      }
+    } catch (e) {
+      console.warn('localStorage read error, using in-memory store', e);
+    }
+    return inMemoryStore[key] || null;
+  },
+  setItem: function(key, val) {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(key, val);
+      }
+    } catch (e) {
+      console.warn('localStorage write error, using in-memory store', e);
+    }
+    inMemoryStore[key] = val;
+  }
+};
+
+// --- 初期データ ---
+function getInitialTodayDate() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+const CLEAN_DEFAULT_DAYS = [
+  {
+    id: 'day-initial',
+    date: getInitialTodayDate(),
+    currentSpotIndex: 0,
+    items: []
+  }
+];
+
+// --- アプリケーション状態 ---
+let state = {
+  days: [],
+  todayIndex: 0,
+  pastViewDayIndex: 0,
+  activeView: 'schedule',
+  selectedActionItem: null
+};
+
+// --- ストレージ読み書き ---
+const STORAGE_KEY_DAYS = 'schedule_app_days_v6';
+const STORAGE_KEY_TODAY_IDX = 'schedule_app_today_idx_v6';
+
+function loadState() {
+  try {
+    const savedDays = safeStorage.getItem(STORAGE_KEY_DAYS);
+    const savedTodayIdx = safeStorage.getItem(STORAGE_KEY_TODAY_IDX);
+
+    state.days = savedDays ? JSON.parse(savedDays) : JSON.parse(JSON.stringify(CLEAN_DEFAULT_DAYS));
+    state.todayIndex = savedTodayIdx !== null ? parseInt(savedTodayIdx, 10) : 0;
+    state.pastViewDayIndex = 0;
+  } catch (e) {
+    state.days = JSON.parse(JSON.stringify(CLEAN_DEFAULT_DAYS));
+    state.todayIndex = 0;
+    state.pastViewDayIndex = 0;
+  }
+}
+
+function saveState() {
+  try {
+    safeStorage.setItem(STORAGE_KEY_DAYS, JSON.stringify(state.days));
+    safeStorage.setItem(STORAGE_KEY_TODAY_IDX, state.todayIndex.toString());
+  } catch (e) {
+    console.warn('saveState error', e);
+  }
+}
+
+function getTodayDay() {
+  if (!state.days || state.days.length === 0) {
+    state.days = JSON.parse(JSON.stringify(CLEAN_DEFAULT_DAYS));
+  }
+  if (state.todayIndex >= state.days.length) {
+    state.todayIndex = 0;
+  }
+  return state.days[state.todayIndex];
+}
+
+// --- 時刻・日付ユーティリティ ---
+function getMinutesFromTimeString(timeStr) {
+  if (!timeStr) return 0;
+  const parts = timeStr.split(':');
+  if (parts.length < 2) return 0;
+  return Number(parts[0]) * 60 + Number(parts[1]);
+}
+
+function formatMinutesToTimeString(totalMinutes) {
+  const h = Math.floor(totalMinutes / 60) % 24;
+  const m = totalMinutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function getCurrentMinutes() {
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes();
+}
+
+function formatDateOnly(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parseInt(parts[1], 10)}月${parseInt(parts[2], 10)}日`;
+  }
+  return dateStr;
+}
+
+function formatFullDate(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[0]}年${parseInt(parts[1], 10)}月${parseInt(parts[2], 10)}日`;
+  }
+  return dateStr;
+}
+
+// --- DOM 初期化 ---
+function initApp() {
+  const dom = {
+    headerDateSub: document.getElementById('header-date-sub'),
+    headerClock: document.getElementById('header-clock'),
+    navButtons: document.querySelectorAll('.nav-button'),
+    viewPanels: {
+      'schedule': document.getElementById('view-schedule'),
+      'now-next': document.getElementById('view-now-next'),
+      'undecided': document.getElementById('view-undecided')
+    },
+    
+    // しおり画面
+    mainDayLabel: document.getElementById('main-day-label'),
+    mainDaySpotsCount: document.getElementById('main-day-spots-count'),
+    scheduleList: document.getElementById('schedule-list'),
+    btnOpenAddSchedule: document.getElementById('btn-open-add-schedule'),
+
+    // いま・つぎ 画面
+    timingStatusCard: document.getElementById('timing-status-card'),
+    timingLabel: document.getElementById('timing-label'),
+    timingMessage: document.getElementById('timing-message'),
+    nowSpotBadge: document.getElementById('now-spot-badge'),
+    nowSpotTitle: document.getElementById('now-spot-title'),
+    nowSpotSub: document.getElementById('now-spot-sub'),
+    nowSpotTime: document.getElementById('now-spot-time'),
+    nowSpotMemo: document.getElementById('now-spot-memo'),
+    nextSpotBadge: document.getElementById('next-spot-badge'),
+    nextSpotTitle: document.getElementById('next-spot-title'),
+    nextSpotSub: document.getElementById('next-spot-sub'),
+    nextSpotTime: document.getElementById('next-spot-time'),
+    nextSpotMemo: document.getElementById('next-spot-memo'),
+    btnNextAction: document.getElementById('btn-next-action'),
+
+    // 過去のしおり 画面
+    btnPastPrev: document.getElementById('btn-past-prev'),
+    btnPastNext: document.getElementById('btn-past-next'),
+    selectPastDay: document.getElementById('select-past-day'),
+    pastDayScheduleList: document.getElementById('past-day-schedule-list'),
+    btnOpenAddDay: document.getElementById('btn-open-add-day'),
+
+    // 予定タップ ポップアップ
+    modalSpotAction: document.getElementById('modal-spot-action'),
+    spotActionName: document.getElementById('spot-action-name'),
+    spotActionTime: document.getElementById('spot-action-time'),
+    btnCloseSpotAction: document.getElementById('btn-close-spot-action'),
+    btnSetAsCurrent: document.getElementById('btn-set-as-current'),
+    btnOpenEditContent: document.getElementById('btn-open-edit-content'),
+    btnDeleteFromAction: document.getElementById('btn-delete-from-action'),
+
+    // 予定追加モーダル
+    modalEditItem: document.getElementById('modal-edit-item'),
+    modalTitle: document.getElementById('modal-title'),
+    scheduleForm: document.getElementById('schedule-form'),
+    formItemId: document.getElementById('form-item-id'),
+    radioTypeSpot: document.getElementById('radio-type-spot'),
+    radioTypeTransit: document.getElementById('radio-type-transit'),
+    fieldSpotContainer: document.getElementById('field-spot-container'),
+    fieldTransitContainer: document.getElementById('field-transit-container'),
+    formTitle: document.getElementById('form-title'),
+    formNearestStation: document.getElementById('form-nearest-station'),
+    formDepartureStation: document.getElementById('form-departure-station'),
+    formArrivalStation: document.getElementById('form-arrival-station'),
+    formTransitPlatform: document.getElementById('form-transit-platform'),
+    formTransitLine: document.getElementById('form-transit-line'),
+    labelStartTime: document.getElementById('label-start-time'),
+    formStartTime: document.getElementById('form-start-time'),
+    labelEndTime: document.getElementById('label-end-time'),
+    formEndTime: document.getElementById('form-end-time'),
+    formMemo: document.getElementById('form-memo'),
+    btnDeleteItem: document.getElementById('btn-delete-item'),
+    btnCloseModal: document.getElementById('btn-close-modal'),
+    btnCancelModal: document.getElementById('btn-cancel-modal'),
+
+    // 日程追加モーダル
+    modalAddDay: document.getElementById('modal-add-day'),
+    dayForm: document.getElementById('day-form'),
+    newDayDate: document.getElementById('new-day-date'),
+    btnCloseDayModal: document.getElementById('btn-close-day-modal'),
+    btnCancelDayModal: document.getElementById('btn-cancel-day-modal')
+  };
+
+  function switchView(viewName) {
+    state.activeView = viewName;
+    
+    dom.navButtons.forEach(btn => {
+      if (btn.dataset.view === viewName) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    Object.keys(dom.viewPanels).forEach(key => {
+      if (key === viewName) {
+        dom.viewPanels[key].classList.add('active');
+      } else {
+        dom.viewPanels[key].classList.remove('active');
+      }
+    });
+
+    render();
+  }
+
+  function render() {
+    renderClock();
+    renderSchedule();
+    renderNowNext();
+    renderPastSchedule();
+  }
+
+  function renderClock() {
+    const currentMin = getCurrentMinutes();
+    const timeStr = formatMinutesToTimeString(currentMin);
+    dom.headerClock.textContent = timeStr;
+
+    const today = getTodayDay();
+    dom.headerDateSub.textContent = formatFullDate(today.date);
+  }
+
+  // カードのHTML生成ヘルパー
+  function createScheduleCardHtml(item) {
+    const timeRange = item.endTime ? `${item.startTime} 〜 ${item.endTime}` : item.startTime;
+    const typeBadge = item.type === 'transit'
+      ? '<span class="type-badge badge-transit">移動</span>'
+      : '<span class="type-badge badge-spot">場所</span>';
+
+    let contentHtml = '';
+    if (item.type === 'transit') {
+      // 交通機関：乗車駅と降車駅の両方がはっきり見える表示
+      const dep = escapeHtml(item.departureStation || '未設定');
+      const arr = escapeHtml(item.arrivalStation || '未設定');
+      const platformHtml = item.platform ? `<span class="platform-badge">${escapeHtml(item.platform)}</span>` : '';
+      const lineHtml = item.transitLine ? `<span>${escapeHtml(item.transitLine)}</span>` : '';
+
+      contentHtml = `
+        <div class="schedule-stations-row">
+          <span class="station-badge">${dep}</span>
+          <span class="station-arrow">&rarr;</span>
+          <span class="station-badge">${arr}</span>
+        </div>
+        ${(platformHtml || lineHtml) ? `<div class="transit-sub-row">${platformHtml} ${lineHtml}</div>` : ''}
+      `;
+    } else {
+      // 場所：予定名 + 最寄り駅
+      const title = escapeHtml(item.title || '予定');
+      const nearestHtml = item.nearestStation ? `<div class="nearest-badge">最寄り: ${escapeHtml(item.nearestStation)}</div>` : '';
+
+      contentHtml = `
+        <div class="schedule-title">${title}</div>
+        ${nearestHtml}
+      `;
+    }
+
+    return `
+      <div class="card-top-row">
+        <div>${typeBadge}</div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="schedule-time">${timeRange}</span>
+          <div class="drag-grip-icon" title="長押しで移動">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      </div>
+      ${contentHtml}
+      ${item.memo ? `<div class="schedule-memo">${escapeHtml(item.memo)}</div>` : ''}
+    `;
+  }
+
+  function renderSchedule() {
+    const today = getTodayDay();
+    const items = today.items || [];
+
+    dom.mainDayLabel.textContent = formatDateOnly(today.date);
+    dom.mainDaySpotsCount.textContent = `${items.length}件の予定`;
+
+    dom.scheduleList.innerHTML = '';
+
+    if (items.length === 0) {
+      dom.scheduleList.innerHTML = `
+        <div style="text-align: center; padding: 40px 20px; color: #8C939E; font-size: 13px;">
+          予定はまだ登録されていません。<br>右上の「+ 予定を追加」から登録してください。
+        </div>
+      `;
+      return;
+    }
+
+    items.forEach((item, index) => {
+      const card = document.createElement('div');
+      card.className = 'schedule-card';
+
+      if (item.type === 'transit') {
+        card.classList.add('is-transit');
+      }
+
+      const isCurrent = (index === today.currentSpotIndex);
+      const isPast = (index < today.currentSpotIndex);
+
+      if (isCurrent) {
+        card.classList.add('is-current');
+      } else if (isPast) {
+        card.classList.add('is-past');
+      }
+
+      card.innerHTML = createScheduleCardHtml(item);
+
+            setupCardDragAndDrop(card, index, state.todayIndex, dom.scheduleList);
+
+      card.addEventListener('click', () => {
+        if (card._didDrag) {
+          card._didDrag = false;
+          return;
+        }
+        openSpotActionPopup(item, index, state.todayIndex);
+      });
+
+      dom.scheduleList.appendChild(card);
+    });
+  }
+
+  function renderNowNext() {
+    const currentMin = getCurrentMinutes();
+    const today = getTodayDay();
+    const items = today.items || [];
+    const currIdx = today.currentSpotIndex || 0;
+
+    const currentSpot = items[currIdx] || null;
+    const nextSpot = items[currIdx + 1] || null;
+
+    // 1. いまどこにいるか
+    if (currentSpot) {
+      if (currentSpot.type === 'transit') {
+        dom.nowSpotTitle.textContent = `${currentSpot.departureStation || ''} → ${currentSpot.arrivalStation || ''}`;
+        const subParts = [];
+        if (currentSpot.platform) subParts.push(currentSpot.platform);
+        if (currentSpot.transitLine) subParts.push(currentSpot.transitLine);
+        dom.nowSpotSub.textContent = subParts.join(' / ');
+        dom.nowSpotBadge.className = 'type-badge badge-transit';
+        dom.nowSpotBadge.textContent = '交通機関・移動中';
+      } else {
+        dom.nowSpotTitle.textContent = currentSpot.title;
+        dom.nowSpotSub.textContent = currentSpot.nearestStation ? `最寄り: ${currentSpot.nearestStation}` : '';
+        dom.nowSpotBadge.className = 'type-badge badge-spot';
+        dom.nowSpotBadge.textContent = '滞在中スポット';
+      }
+
+      dom.nowSpotTime.textContent = currentSpot.endTime 
+        ? `${currentSpot.startTime} 〜 ${currentSpot.endTime}` 
+        : `${currentSpot.startTime} 開始`;
+      dom.nowSpotMemo.textContent = currentSpot.memo || 'メモなし';
+    } else {
+      dom.nowSpotTitle.textContent = '予定がありません';
+      dom.nowSpotSub.textContent = '';
+      dom.nowSpotTime.textContent = '--:-- 〜 --:--';
+      dom.nowSpotMemo.textContent = 'しおりから予定を追加してください';
+      dom.nowSpotBadge.className = 'type-badge badge-spot';
+      dom.nowSpotBadge.textContent = '待機中';
+    }
+
+    // 2. 次の予定
+    if (nextSpot) {
+      if (nextSpot.type === 'transit') {
+        dom.nextSpotTitle.textContent = `${nextSpot.departureStation || ''} → ${nextSpot.arrivalStation || ''}`;
+        const subParts = [];
+        if (nextSpot.platform) subParts.push(nextSpot.platform);
+        if (nextSpot.transitLine) subParts.push(nextSpot.transitLine);
+        dom.nextSpotSub.textContent = subParts.join(' / ');
+        dom.nextSpotBadge.className = 'type-badge badge-transit';
+        dom.nextSpotBadge.textContent = '次の移動';
+      } else {
+        dom.nextSpotTitle.textContent = nextSpot.title;
+        dom.nextSpotSub.textContent = nextSpot.nearestStation ? `最寄り: ${nextSpot.nearestStation}` : '';
+        dom.nextSpotBadge.className = 'type-badge badge-spot';
+        dom.nextSpotBadge.textContent = '次の目的地';
+      }
+
+      dom.nextSpotTime.textContent = `${nextSpot.startTime} 開始予定`;
+      dom.nextSpotMemo.textContent = nextSpot.memo || '';
+      dom.btnNextAction.style.display = 'flex';
+      dom.btnNextAction.querySelector('span').textContent = `「${dom.nextSpotTitle.textContent}」へ移動・次へ`;
+    } else {
+      dom.nextSpotTitle.textContent = '次の予定はありません';
+      dom.nextSpotSub.textContent = '';
+      dom.nextSpotTime.textContent = '--:--';
+      dom.nextSpotMemo.textContent = '';
+      dom.btnNextAction.style.display = 'none';
+      dom.nextSpotBadge.className = 'type-badge badge-spot';
+      dom.nextSpotBadge.textContent = '待機中';
+    }
+
+    updateTimingStatus(currentSpot, nextSpot, currentMin);
+  }
+
+  function updateTimingStatus(currentSpot, nextSpot, currentMin) {
+    if (!currentSpot && !nextSpot) {
+      dom.timingStatusCard.className = 'timing-card status-relax';
+      dom.timingLabel.textContent = 'ステータス';
+      dom.timingMessage.textContent = '予定を追加してください';
+      return;
+    }
+
+    if (!nextSpot) {
+      dom.timingStatusCard.className = 'timing-card status-relax';
+      dom.timingLabel.textContent = '予定完了';
+      dom.timingMessage.textContent = '本日のすべての予定が終了しました';
+      return;
+    }
+
+    const nextStartMin = getMinutesFromTimeString(nextSpot.startTime);
+    const diffToNext = nextStartMin - currentMin;
+
+    if (diffToNext > 25) {
+      dom.timingStatusCard.className = 'timing-card status-relax';
+      dom.timingLabel.textContent = '滞在中';
+      dom.timingMessage.textContent = `次の移動まで、あと約${diffToNext}分あります`;
+    } else if (diffToNext >= 5) {
+      dom.timingStatusCard.className = 'timing-card status-warning';
+      dom.timingLabel.textContent = 'そろそろ移動の準備';
+      dom.timingMessage.textContent = `次の予定へ、そろそろ移動する時間です`;
+    } else {
+      dom.timingStatusCard.className = 'timing-card status-move';
+      dom.timingLabel.textContent = '移動中 / 開始時間';
+      dom.timingMessage.textContent = `次の予定の時間です`;
+    }
+  }
+
+  function renderPastSchedule() {
+    dom.selectPastDay.innerHTML = '';
+    state.days.forEach((day, idx) => {
+      const opt = document.createElement('option');
+      opt.value = idx.toString();
+      opt.textContent = formatFullDate(day.date);
+      if (idx === state.pastViewDayIndex) {
+        opt.selected = true;
+      }
+      dom.selectPastDay.appendChild(opt);
+    });
+
+    dom.btnPastPrev.disabled = (state.pastViewDayIndex <= 0);
+    dom.btnPastPrev.style.opacity = (state.pastViewDayIndex <= 0) ? '0.3' : '1';
+    dom.btnPastNext.disabled = (state.pastViewDayIndex >= state.days.length - 1);
+    dom.btnPastNext.style.opacity = (state.pastViewDayIndex >= state.days.length - 1) ? '0.3' : '1';
+
+    const selectedDay = state.days[state.pastViewDayIndex] || state.days[0];
+    const items = selectedDay.items || [];
+    dom.pastDayScheduleList.innerHTML = '';
+
+    if (items.length === 0) {
+      dom.pastDayScheduleList.innerHTML = `
+        <div style="text-align: center; padding: 25px; color: #8C939E; font-size: 13px;">
+          この日の予定はありません。
+        </div>
+      `;
+    } else {
+      items.forEach((item, index) => {
+        const card = document.createElement('div');
+        card.className = 'schedule-card';
+
+        if (item.type === 'transit') {
+          card.classList.add('is-transit');
+        }
+
+        if (state.pastViewDayIndex === state.todayIndex && index === selectedDay.currentSpotIndex) {
+          card.classList.add('is-current');
+        }
+
+        card.innerHTML = createScheduleCardHtml(item);
+
+              setupCardDragAndDrop(card, index, state.pastViewDayIndex, dom.pastDayScheduleList);
+
+      card.addEventListener('click', () => {
+        if (card._didDrag) {
+          card._didDrag = false;
+          return;
+        }
+        openSpotActionPopup(item, index, state.pastViewDayIndex);
+      });
+
+        dom.pastDayScheduleList.appendChild(card);
+      });
+    }
+  }
+
+  dom.selectPastDay.addEventListener('change', (e) => {
+    state.pastViewDayIndex = parseInt(e.target.value, 10);
+    renderPastSchedule();
+  });
+
+  dom.btnPastPrev.addEventListener('click', () => {
+    if (state.pastViewDayIndex > 0) {
+      state.pastViewDayIndex--;
+      renderPastSchedule();
+    }
+  });
+
+  dom.btnPastNext.addEventListener('click', () => {
+    if (state.pastViewDayIndex < state.days.length - 1) {
+      state.pastViewDayIndex++;
+      renderPastSchedule();
+    }
+  });
+
+  // ポップアップ操作
+  function openSpotActionPopup(item, index, dayIndex) {
+    state.selectedActionItem = { item, index, dayIndex };
+    
+    if (item.type === 'transit') {
+      dom.spotActionName.textContent = `${item.departureStation || ''} → ${item.arrivalStation || ''}`;
+    } else {
+      dom.spotActionName.textContent = item.title;
+    }
+
+    const timeRange = item.endTime ? `${item.startTime} 〜 ${item.endTime}` : item.startTime;
+    dom.spotActionTime.textContent = timeRange;
+    dom.modalSpotAction.classList.remove('hidden');
+  }
+
+  function closeSpotActionPopup() {
+    dom.modalSpotAction.classList.add('hidden');
+    state.selectedActionItem = null;
+  }
+
+  dom.btnSetAsCurrent.addEventListener('click', () => {
+    if (state.selectedActionItem) {
+      const { index, dayIndex } = state.selectedActionItem;
+      state.todayIndex = dayIndex;
+      state.days[dayIndex].currentSpotIndex = index;
+      saveState();
+      closeSpotActionPopup();
+      render();
+    }
+  });
+
+  dom.btnOpenEditContent.addEventListener('click', () => {
+    if (state.selectedActionItem) {
+      const item = state.selectedActionItem.item;
+      closeSpotActionPopup();
+      openEditModal(item);
+    }
+  });
+
+  dom.btnDeleteFromAction.addEventListener('click', () => {
+    if (state.selectedActionItem) {
+      const { item, dayIndex } = state.selectedActionItem;
+      state.days[dayIndex].items = state.days[dayIndex].items.filter(s => s.id !== item.id);
+      if (state.days[dayIndex].currentSpotIndex >= state.days[dayIndex].items.length) {
+        state.days[dayIndex].currentSpotIndex = Math.max(0, state.days[dayIndex].items.length - 1);
+      }
+      saveState();
+      closeSpotActionPopup();
+      render();
+    }
+  });
+
+  dom.btnCloseSpotAction.addEventListener('click', closeSpotActionPopup);
+  dom.modalSpotAction.querySelector('.modal-backdrop').addEventListener('click', closeSpotActionPopup);
+
+  // モーダル操作: 場所 vs 交通機関の切り替え
+  function updateFormTypeFields() {
+    const isTransit = dom.radioTypeTransit.checked;
+    if (isTransit) {
+      dom.fieldSpotContainer.classList.add('hidden');
+      dom.fieldTransitContainer.classList.remove('hidden');
+      dom.formTitle.removeAttribute('required');
+      dom.formDepartureStation.setAttribute('required', 'true');
+      dom.formArrivalStation.setAttribute('required', 'true');
+      dom.labelStartTime.textContent = '出発時刻 *';
+      dom.labelEndTime.textContent = '到着時刻';
+    } else {
+      dom.fieldSpotContainer.classList.remove('hidden');
+      dom.fieldTransitContainer.classList.add('hidden');
+      dom.formTitle.setAttribute('required', 'true');
+      dom.formDepartureStation.removeAttribute('required');
+      dom.formArrivalStation.removeAttribute('required');
+      dom.labelStartTime.textContent = '開始時刻 *';
+      dom.labelEndTime.textContent = '終了時刻';
+    }
+  }
+
+  dom.radioTypeSpot.addEventListener('change', updateFormTypeFields);
+  dom.radioTypeTransit.addEventListener('change', updateFormTypeFields);
+
+  document.querySelectorAll('.transit-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      dom.formTransitLine.value = chip.dataset.val;
+    });
+  });
+
+  function openAddModal() {
+    dom.modalTitle.textContent = '予定・交通の追加';
+    dom.formItemId.value = '';
+    dom.formTitle.value = '';
+    dom.formNearestStation.value = '';
+    dom.formDepartureStation.value = '';
+    dom.formArrivalStation.value = '';
+    dom.formTransitPlatform.value = '';
+    dom.formTransitLine.value = '';
+    dom.radioTypeSpot.checked = true;
+    updateFormTypeFields();
+    
+    const today = getTodayDay();
+    const items = today.items || [];
+    // 初期値をご要望通り「現在の時間」に設定
+    const now = new Date();
+    const curH = String(now.getHours()).padStart(2, '0');
+    const curM = String(now.getMinutes()).padStart(2, '0');
+    const currentStart = curH + ":" + curM;
+    const endMinutes = now.getHours() * 60 + now.getMinutes() + 60; // 1時間後
+    
+    dom.formStartTime.value = currentStart;
+    dom.formEndTime.value = formatMinutesToTimeString(endMinutes);
+    dom.formMemo.value = '';
+    dom.btnDeleteItem.classList.add('hidden');
+    dom.modalEditItem.classList.remove('hidden');
+  }
+
+  function openEditModal(item) {
+    dom.modalTitle.textContent = '予定を編集';
+    dom.formItemId.value = item.id;
+    
+    if (item.type === 'transit') {
+      dom.radioTypeTransit.checked = true;
+      dom.formDepartureStation.value = item.departureStation || '';
+      dom.formArrivalStation.value = item.arrivalStation || '';
+      dom.formTransitPlatform.value = item.platform || '';
+      dom.formTransitLine.value = item.transitLine || '';
+      dom.formTitle.value = '';
+      dom.formNearestStation.value = '';
+    } else {
+      dom.radioTypeSpot.checked = true;
+      dom.formTitle.value = item.title || '';
+      dom.formNearestStation.value = item.nearestStation || '';
+      dom.formDepartureStation.value = '';
+      dom.formArrivalStation.value = '';
+      dom.formTransitPlatform.value = '';
+      dom.formTransitLine.value = '';
+    }
+    updateFormTypeFields();
+
+    dom.formStartTime.value = item.startTime;
+    dom.formEndTime.value = item.endTime || '';
+    dom.formMemo.value = item.memo || '';
+    dom.btnDeleteItem.classList.remove('hidden');
+    dom.modalEditItem.classList.remove('hidden');
+  }
+
+  function closeModal() {
+    dom.modalEditItem.classList.add('hidden');
+  }
+
+  dom.scheduleForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const id = dom.formItemId.value;
+    const isTransit = dom.radioTypeTransit.checked;
+    const startTime = dom.formStartTime.value;
+    const endTime = dom.formEndTime.value;
+    const memo = dom.formMemo.value.trim();
+
+    let type = 'spot';
+    let title = '';
+    let nearestStation = '';
+    let departureStation = '';
+    let arrivalStation = '';
+    let platform = '';
+    let transitLine = '';
+
+    if (isTransit) {
+      type = 'transit';
+      departureStation = dom.formDepartureStation.value.trim();
+      arrivalStation = dom.formArrivalStation.value.trim();
+      platform = dom.formTransitPlatform.value.trim();
+      transitLine = dom.formTransitLine.value.trim();
+
+      if (!departureStation || !arrivalStation) return;
+      title = `${departureStation} → ${arrivalStation}`;
+    } else {
+      type = 'spot';
+      title = dom.formTitle.value.trim();
+      nearestStation = dom.formNearestStation.value.trim();
+      if (!title) return;
+    }
+
+    if (!startTime) return;
+
+    const today = getTodayDay();
+    if (!today.items) today.items = [];
+
+    if (id) {
+      const index = today.items.findIndex(s => s.id === id);
+      if (index !== -1) {
+        today.items[index] = {
+          ...today.items[index],
+          type,
+          title,
+          nearestStation,
+          departureStation,
+          arrivalStation,
+          platform,
+          transitLine,
+          startTime,
+          endTime,
+          memo
+        };
+      }
+    } else {
+      const newItem = {
+        id: (type === 'transit' ? 'transit-' : 'spot-') + Date.now(),
+        type,
+        title,
+        nearestStation,
+        departureStation,
+        arrivalStation,
+        platform,
+        transitLine,
+        startTime,
+        endTime,
+        memo
+      };
+      today.items.push(newItem);
+      today.items.sort((a, b) => {
+        return getMinutesFromTimeString(a.startTime) - getMinutesFromTimeString(b.startTime);
+      });
+    }
+
+    saveState();
+    closeModal();
+    render();
+  });
+
+  dom.btnDeleteItem.addEventListener('click', () => {
+    const id = dom.formItemId.value;
+    if (!id) return;
+    const today = getTodayDay();
+    today.items = today.items.filter(s => s.id !== id);
+    if (today.currentSpotIndex >= today.items.length) {
+      today.currentSpotIndex = Math.max(0, today.items.length - 1);
+    }
+    saveState();
+    closeModal();
+    render();
+  });
+
+  dom.btnCloseModal.addEventListener('click', closeModal);
+  dom.btnCancelModal.addEventListener('click', closeModal);
+  dom.modalEditItem.querySelector('.modal-backdrop').addEventListener('click', closeModal);
+
+  // 日程追加
+  dom.btnOpenAddDay.addEventListener('click', () => {
+    const now = new Date();
+    now.setDate(now.getDate() + state.days.length);
+    const nextDate = now.toISOString().split('T')[0];
+    dom.newDayDate.value = nextDate;
+    dom.modalAddDay.classList.remove('hidden');
+  });
+
+  dom.dayForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const date = dom.newDayDate.value;
+    if (!date) return;
+
+    const newDay = {
+      id: 'day-' + Date.now(),
+      date,
+      currentSpotIndex: 0,
+      items: []
+    };
+
+    state.days.push(newDay);
+    state.days.sort((a, b) => {
+      const timeA = new Date(a.date.replace(/-/g, '/')).getTime();
+      const timeB = new Date(b.date.replace(/-/g, '/')).getTime();
+      return timeA - timeB;
+    });
+    
+    state.pastViewDayIndex = state.days.findIndex(d => d.id === newDay.id);
+    saveState();
+    dom.modalAddDay.classList.add('hidden');
+    render();
+  });
+
+  dom.btnCloseDayModal.addEventListener('click', () => dom.modalAddDay.classList.add('hidden'));
+  dom.btnCancelDayModal.addEventListener('click', () => dom.modalAddDay.classList.add('hidden'));
+  dom.modalAddDay.querySelector('.modal-backdrop').addEventListener('click', () => dom.modalAddDay.classList.add('hidden'));
+
+  // ナビゲーション切り替え
+  dom.navButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      switchView(btn.dataset.view);
+    });
+  });
+
+  dom.btnOpenAddSchedule.addEventListener('click', openAddModal);
+
+  dom.btnNextAction.addEventListener('click', () => {
+    const today = getTodayDay();
+    if (today.currentSpotIndex < today.items.length - 1) {
+      today.currentSpotIndex++;
+      saveState();
+      render();
+    }
+  });
+
+  setInterval(() => {
+    renderClock();
+  }, 30000);
+
+  
+  // ===================================================
+  // 予定の長押しドラッグ＆ドロップ並び替え ＆ 時間連動処理
+  // ===================================================
+
+  // 予定の所要時間（分単位）を計算
+  function getItemDurationMinutes(item) {
+    const start = parseTimeToMinutes(item.startTime);
+    if (item.endTime) {
+      const end = parseTimeToMinutes(item.endTime);
+      if (end > start) {
+        return end - start;
+      }
+    }
+    return 60; // 終了時刻が未設定または同時の場合はデフォルト60分
+  }
+
+  // 分単位の数値を "HH:MM" 形式文字列に変換（23:59を超えないよう安全処理）
+  function safeMinutesToTime(min) {
+    if (isNaN(min) || min < 0) min = 0;
+    if (min >= 1440) min = 1439; // 23:59 でクリップ
+    return formatMinutesToTimeString(min);
+  }
+
+  // トースト通知を表示
+  function showToast(message) {
+    const toast = document.getElementById('app-toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('show');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => {
+      toast.classList.remove('show');
+    }, 2200);
+  }
+
+  // 予定を並び替え、ユーザー指示通りの時間シフト・連動を行う
+  function reorderScheduleWithTimeShift(dayIndex, fromIndex, toIndex) {
+    const day = state.days[dayIndex];
+    if (!day || !day.items) return;
+    if (fromIndex === toIndex) return;
+    if (fromIndex < 0 || fromIndex >= day.items.length) return;
+    if (toIndex < 0 || toIndex >= day.items.length) return;
+
+    // 現在選択中のスポットIDを記録（赤枠ハイライトを正しく追従させるため）
+    const currentSpot = day.items[day.currentSpotIndex];
+    const currentSpotId = currentSpot ? currentSpot.id : null;
+
+    const items = [...day.items];
+    const movedItem = items[fromIndex];
+    const duration = getItemDurationMinutes(movedItem);
+
+    // 【ユーザー要望のアルゴリズム】
+    // 「時間は入れ替えた時間を引き継いで。時間がずれた予定は、ずらした予定分の時間プラスしたらいいはず」
+
+    if (toIndex < fromIndex) {
+      // ===== 上方向への移動 =====
+      // 移動先（toIndex）の予定が元々持っていた開始時間を引き継ぐ
+      const targetOriginalStart = parseTimeToMinutes(items[toIndex].startTime);
+
+      // 配列上で取り出して新しい位置に挿入
+      items.splice(fromIndex, 1);
+      items.splice(toIndex, 0, movedItem);
+
+      // 移動した予定の開始・終了時刻を設定
+      movedItem.startTime = safeMinutesToTime(targetOriginalStart);
+      movedItem.endTime = safeMinutesToTime(targetOriginalStart + duration);
+
+      // 後ろに押し出された予定たち（toIndex + 1 から末尾まで）に duration をプラス
+      for (let i = toIndex + 1; i < items.length; i++) {
+        const it = items[i];
+        const itStart = parseTimeToMinutes(it.startTime);
+        const itDur = getItemDurationMinutes(it);
+        const newStart = itStart + duration;
+        it.startTime = safeMinutesToTime(newStart);
+        it.endTime = safeMinutesToTime(newStart + itDur);
+      }
+    } else {
+      // ===== 下方向への移動 =====
+      // 配列上で取り出して新しい位置に挿入
+      items.splice(fromIndex, 1);
+      items.splice(toIndex, 0, movedItem);
+
+      // 直前の予定（toIndex - 1）の終了時間を引き継ぐ
+      const prevItem = items[toIndex - 1];
+      const prevEnd = prevItem.endTime 
+        ? parseTimeToMinutes(prevItem.endTime) 
+        : parseTimeToMinutes(prevItem.startTime) + 60;
+
+      movedItem.startTime = safeMinutesToTime(prevEnd);
+      movedItem.endTime = safeMinutesToTime(prevEnd + duration);
+
+      // 直後（toIndex + 1 以降）に予定があり、movedItem と時間が重なる場合、
+      // ユーザーの指示通り「ずらした予定分の時間（duration）プラス」して後ろへシフト
+      if (toIndex + 1 < items.length) {
+        const nextItem = items[toIndex + 1];
+        const nextStart = parseTimeToMinutes(nextItem.startTime);
+        const movedEndMin = parseTimeToMinutes(movedItem.endTime);
+
+        if (nextStart < movedEndMin) {
+          const shiftAmount = (movedEndMin - nextStart) > duration ? (movedEndMin - nextStart) : duration;
+          for (let i = toIndex + 1; i < items.length; i++) {
+            const it = items[i];
+            const itStart = parseTimeToMinutes(it.startTime);
+            const itDur = getItemDurationMinutes(it);
+            const newStart = itStart + shiftAmount;
+            it.startTime = safeMinutesToTime(newStart);
+            it.endTime = safeMinutesToTime(newStart + itDur);
+          }
+        }
+      }
+    }
+
+    day.items = items;
+
+    // 赤枠ハイライト（現在の予定）を元の予定に追従
+    if (currentSpotId) {
+      const newCurrIdx = day.items.findIndex(it => it.id === currentSpotId);
+      if (newCurrIdx !== -1) {
+        day.currentSpotIndex = newCurrIdx;
+      }
+    }
+
+    saveState();
+    render();
+    showToast('予定を並び替え、時間を更新しました');
+  }
+
+  // しおりカードの長押しドラッグ＆ドロップ登録
+  function setupCardDragAndDrop(card, index, dayIndex, container) {
+    let startX = 0;
+    let startY = 0;
+    let longPressTimer = null;
+    let isDragging = false;
+    let ghostEl = null;
+    let dropIndicator = null;
+    let currentDropIndex = index;
+
+    card._didDrag = false;
+
+    function onPointerDown(e) {
+      if (e.button !== undefined && e.button !== 0) return; // 左クリックのみ
+      
+      const point = e.touches ? e.touches[0] : e;
+      startX = point.clientX;
+      startY = point.clientY;
+      isDragging = false;
+      card._didDrag = false;
+
+      // 360ms の長押しでドラッグ開始
+      longPressTimer = setTimeout(() => {
+        startDragging(point);
+      }, 360);
+
+      window.addEventListener('touchmove', onPointerMove, { passive: false });
+      window.addEventListener('mousemove', onPointerMove);
+      window.addEventListener('touchend', onPointerUp);
+      window.addEventListener('mouseup', onPointerUp);
+      window.addEventListener('touchcancel', onPointerUp);
+    }
+
+    function startDragging(point) {
+      isDragging = true;
+      card._didDrag = true;
+      if (navigator.vibrate) {
+        try { navigator.vibrate(40); } catch (err) {}
+      }
+
+      const rect = card.getBoundingClientRect();
+      const offsetX = point.clientX - rect.left;
+      const offsetY = point.clientY - rect.top;
+
+      // ゴースト要素を作成
+      ghostEl = card.cloneNode(true);
+      ghostEl.classList.add('drag-ghost');
+      if (card.classList.contains('is-current')) {
+        ghostEl.classList.add('is-current');
+      }
+      ghostEl.style.width = rect.width + 'px';
+      ghostEl.style.height = rect.height + 'px';
+      ghostEl.style.left = (point.clientX - offsetX) + 'px';
+      ghostEl.style.top = (point.clientY - offsetY) + 'px';
+      document.body.appendChild(ghostEl);
+
+      // 元のカードを点線プレースホルダー表示に
+      card.classList.add('is-dragging-original');
+
+      // 挿入位置を示す青いラインインジケーターを作成
+      dropIndicator = document.createElement('div');
+      dropIndicator.className = 'drop-indicator';
+
+      currentDropIndex = index;
+      card.parentNode.insertBefore(dropIndicator, card);
+    }
+
+    function onPointerMove(e) {
+      const point = e.touches ? e.touches[0] : e;
+      const diffX = Math.abs(point.clientX - startX);
+      const diffY = Math.abs(point.clientY - startY);
+
+      if (!isDragging) {
+        // 長押し前に指が動いた場合は通常の画面スクロールとみなして長押しをキャンセル
+        if (diffX > 10 || diffY > 10) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+        return;
+      }
+
+      // ドラッグ中は画面スクロールを防止
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+
+      // ゴースト要素の位置更新（指の中央に追従）
+      if (ghostEl) {
+        const rect = card.getBoundingClientRect();
+        ghostEl.style.left = (point.clientX - rect.width / 2) + 'px';
+        ghostEl.style.top = (point.clientY - 35) + 'px';
+      }
+
+      // 自分以外のカード要素一覧
+      const allCards = Array.from(container.querySelectorAll('.schedule-card:not(.is-dragging-original)'));
+      let newDropIndex = allCards.length;
+
+      for (let i = 0; i < allCards.length; i++) {
+        const targetCard = allCards[i];
+        const tRect = targetCard.getBoundingClientRect();
+        const tMidY = tRect.top + tRect.height / 2;
+
+        if (point.clientY < tMidY) {
+          newDropIndex = i;
+          break;
+        }
+      }
+
+      currentDropIndex = newDropIndex;
+
+      // 青いドロップラインの位置を更新
+      if (dropIndicator) {
+        if (newDropIndex < allCards.length) {
+          container.insertBefore(dropIndicator, allCards[newDropIndex]);
+        } else {
+          container.appendChild(dropIndicator);
+        }
+      }
+    }
+
+    function onPointerUp() {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+
+      window.removeEventListener('touchmove', onPointerMove);
+      window.removeEventListener('mousemove', onPointerMove);
+      window.removeEventListener('touchend', onPointerUp);
+      window.removeEventListener('mouseup', onPointerUp);
+      window.removeEventListener('touchcancel', onPointerUp);
+
+      if (!isDragging) return;
+
+      isDragging = false;
+
+      // ゴーストとドロップラインを削除
+      if (ghostEl && ghostEl.parentNode) {
+        ghostEl.parentNode.removeChild(ghostEl);
+      }
+      if (dropIndicator && dropIndicator.parentNode) {
+        dropIndicator.parentNode.removeChild(dropIndicator);
+      }
+      card.classList.remove('is-dragging-original');
+
+      // 並び替えの実行
+      const finalIndex = currentDropIndex;
+      if (finalIndex !== index) {
+        reorderScheduleWithTimeShift(dayIndex, index, finalIndex);
+      }
+    }
+
+    card.addEventListener('touchstart', onPointerDown, { passive: true });
+    card.addEventListener('mousedown', onPointerDown);
+  }
+
+  loadState();
+  render();
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>'"]/g, 
+    tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+  );
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
+
+</script>
+</body>
+</html>
