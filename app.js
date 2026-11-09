@@ -604,7 +604,9 @@ function initApp() {
   function updateFormTypeFields() {
     const isTransit = dom.radioTypeTransit.checked;
     if (isTransit) {
+      dom.fieldSpotContainer.style.display = 'none';
       dom.fieldSpotContainer.classList.add('hidden');
+      dom.fieldTransitContainer.style.display = 'flex';
       dom.fieldTransitContainer.classList.remove('hidden');
       dom.formTitle.removeAttribute('required');
       dom.formDepartureStation.setAttribute('required', 'true');
@@ -612,7 +614,9 @@ function initApp() {
       dom.labelStartTime.textContent = '出発時刻 *';
       dom.labelEndTime.textContent = '到着時刻';
     } else {
+      dom.fieldSpotContainer.style.display = 'flex';
       dom.fieldSpotContainer.classList.remove('hidden');
+      dom.fieldTransitContainer.style.display = 'none';
       dom.fieldTransitContainer.classList.add('hidden');
       dom.formTitle.setAttribute('required', 'true');
       dom.formDepartureStation.removeAttribute('required');

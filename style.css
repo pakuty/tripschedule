@@ -623,6 +623,7 @@ body {
   justify-content: center;
 }
 
+.hidden,
 .modal.hidden {
   display: none !important;
 }
@@ -788,6 +789,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.transit-container.hidden,
+.form-group-stack.hidden {
+  display: none !important;
 }
 
 .form-group-stack {

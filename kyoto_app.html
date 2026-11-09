@@ -636,6 +636,7 @@ body {
   justify-content: center;
 }
 
+.hidden,
 .modal.hidden {
   display: none !important;
 }
@@ -801,6 +802,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.transit-container.hidden,
+.form-group-stack.hidden {
+  display: none !important;
 }
 
 .form-group-stack {
@@ -1264,7 +1270,7 @@ body {
         </div>
 
         <!-- 2. 交通機関の場合の入力（乗車駅・降車駅を一番上へ、乗り場欄を追加） -->
-        <div id="field-transit-container" class="transit-container hidden">
+        <div id="field-transit-container" class="transit-container hidden" style="display: none;">
           <!-- 乗車駅・降車駅（一番上に配置） -->
           <div class="form-row">
             <div class="form-group flex-1">
@@ -1959,7 +1965,9 @@ function initApp() {
   function updateFormTypeFields() {
     const isTransit = dom.radioTypeTransit.checked;
     if (isTransit) {
+      dom.fieldSpotContainer.style.display = 'none';
       dom.fieldSpotContainer.classList.add('hidden');
+      dom.fieldTransitContainer.style.display = 'flex';
       dom.fieldTransitContainer.classList.remove('hidden');
       dom.formTitle.removeAttribute('required');
       dom.formDepartureStation.setAttribute('required', 'true');
@@ -1967,7 +1975,9 @@ function initApp() {
       dom.labelStartTime.textContent = '出発時刻 *';
       dom.labelEndTime.textContent = '到着時刻';
     } else {
+      dom.fieldSpotContainer.style.display = 'flex';
       dom.fieldSpotContainer.classList.remove('hidden');
+      dom.fieldTransitContainer.style.display = 'none';
       dom.fieldTransitContainer.classList.add('hidden');
       dom.formTitle.setAttribute('required', 'true');
       dom.formDepartureStation.removeAttribute('required');
