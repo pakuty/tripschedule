@@ -10,7 +10,7 @@
   <link rel="icon" href="icon.png">
   <link rel="manifest" href="manifest.json">
   <title>日程管理アプリ</title>
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="style.css?v=8">
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -246,12 +246,12 @@
           <!-- 乗車駅・降車駅（一番上に配置） -->
           <div class="form-row">
             <div class="form-group flex-1">
-              <label for="form-departure-station">乗車駅（出発地） *</label>
+              <label for="form-departure-station">乗車駅 *</label>
               <input type="text" id="form-departure-station" placeholder="例: 京都駅" class="input-text">
             </div>
             <div class="station-arrow-col">&rarr;</div>
             <div class="form-group flex-1">
-              <label for="form-arrival-station">降車駅（到着地） *</label>
+              <label for="form-arrival-station">降車駅 *</label>
               <input type="text" id="form-arrival-station" placeholder="例: 稲荷駅" class="input-text">
             </div>
           </div>
@@ -330,6 +330,6 @@
   <!-- 操作フィードバック用トースト通知 -->
   <div id="app-toast" class="app-toast"></div>
 
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

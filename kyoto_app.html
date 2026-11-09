@@ -652,9 +652,10 @@ body {
   position: relative;
   width: 100%;
   max-width: 440px;
+  box-sizing: border-box;
   background-color: #FFFFFF;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: 20px;
+  padding: 18px 16px;
   z-index: 51;
   max-height: 90vh;
   overflow-y: auto;
@@ -818,10 +819,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-top: 22px;
-  font-size: 18px;
+  padding-bottom: 9px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--accent-blue);
+  flex-shrink: 0;
+  width: 18px;
 }
 
 .transit-chips {
@@ -861,18 +864,24 @@ body {
 
 .form-row {
   display: flex;
-  gap: 8px;
+  align-items: flex-end;
+  gap: 6px;
+  width: 100%;
 }
 
 .flex-1 {
-  flex: 1;
+  flex: 1 1 0%;
+  min-width: 0;
 }
 
 .input-text {
-  padding: 9px 12px;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 9px 10px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  font-size: 15px;
+  font-size: 14px;
   outline: none;
   background-color: #FAFAFA;
 }
@@ -1276,12 +1285,12 @@ body {
           <!-- 乗車駅・降車駅（一番上に配置） -->
           <div class="form-row">
             <div class="form-group flex-1">
-              <label for="form-departure-station">乗車駅（出発地） *</label>
+              <label for="form-departure-station">乗車駅 *</label>
               <input type="text" id="form-departure-station" placeholder="例: 京都駅" class="input-text">
             </div>
             <div class="station-arrow-col">&rarr;</div>
             <div class="form-group flex-1">
-              <label for="form-arrival-station">降車駅（到着地） *</label>
+              <label for="form-arrival-station">降車駅 *</label>
               <input type="text" id="form-arrival-station" placeholder="例: 稲荷駅" class="input-text">
             </div>
           </div>
