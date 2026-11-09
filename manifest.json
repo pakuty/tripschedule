@@ -1,0 +1,15 @@
+{
+  "name": "日程管理アプリ",
+  "short_name": "日程管理",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F5F6F8",
+  "theme_color": "#FFFFFF",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

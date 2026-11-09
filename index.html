@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#FFFFFF">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="icon" href="icon.png">
+  <link rel="manifest" href="manifest.json">
+  <title>日程管理アプリ</title>
+  <link rel="stylesheet" href="style.css">
+  <script>
+    // オフライン自動保存（Service Worker登録）
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW reg error', err));
+      });
+    }
+  </script>
+</head>
+<body>
+
+  <!-- モバイルアプリコンテナ -->
+  <div class="mobile-frame">
+    
+    <!-- アプリ共通ヘッダー -->
+    <header class="app-header">
+      <div class="header-inner">
+        <div>
+          <h1 class="header-title">日程管理アプリ</h1>
+          <div id="header-date-sub" class="header-subtitle">--月--日</div>
+        </div>
+        <div class="current-time-badge">
+          <span class="time-dot"></span>
+          <span id="header-clock">09:00</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- メイン表示領域 -->
+    <main class="app-content">
+
+      <!-- ================= 画面①: しおり（本日の日程限定） ================= -->
+      <section id="view-schedule" class="view-panel">
+        
+        <div class="today-header-card">
+          <div class="today-header-info">
+            <span class="today-badge">本日</span>
+            <span id="main-day-label" class="today-date-text">--月--日</span>
+            <span id="main-day-spots-count" class="today-count-text">0件の予定</span>
+          </div>
+          <button id="btn-open-add-schedule" class="btn-primary-small">+ 予定を追加</button>
+        </div>
+
+        <p class="timeline-hint">予定を押すと「現在の予定にする」や「内容変更」ができます</p>
+
+        <!-- 本日のタイムライン一覧 -->
+        <div id="schedule-list" class="schedule-timeline">
+          <!-- JSで動的に本日の予定を出力 -->
+        </div>
+      </section>
+
+      <!-- ================= 画面②: いま・つぎ ================= -->
+      <section id="view-now-next" class="view-panel active">
+        
+        <!-- ステータス（移動タイミング） -->
+        <div id="timing-status-card" class="timing-card status-relax">
+          <div class="timing-body">
+            <div class="timing-label" id="timing-label">ステータス</div>
+            <div class="timing-message" id="timing-message">予定を追加してください</div>
+          </div>
+        </div>
+
+        <!-- 1. いまどこにいるか -->
+        <div class="card now-card">
+          <div class="card-tag tag-now">いまここ</div>
+          <div class="card-content">
+            <div class="spot-type-badge-wrap">
+              <span id="now-spot-badge" class="type-badge badge-spot">場所</span>
+            </div>
+            <h3 id="now-spot-title" class="spot-title">予定がありません</h3>
+            <p id="now-spot-time" class="spot-time">--:-- 〜 --:--</p>
+            <p id="now-spot-memo" class="spot-memo">しおりから予定を追加してください</p>
+          </div>
+        </div>
+
+        <!-- 2. 次の予定は何か -->
+        <div class="card next-card">
+          <div class="card-tag tag-next">つぎの予定</div>
+          <div class="card-content">
+            <div class="spot-type-badge-wrap">
+              <span id="next-spot-badge" class="type-badge badge-spot">場所</span>
+            </div>
+            <h3 id="next-spot-title" class="spot-title">次の予定はありません</h3>
+            <p id="next-spot-time" class="spot-time">--:-- 開始予定</p>
+            <p id="next-spot-memo" class="spot-memo"></p>
+          </div>
+        </div>
+
+        <!-- アクションボタン -->
+        <div class="action-buttons-wrap">
+          <button id="btn-next-action" class="btn-main-action" style="display: none;">
+            <span>次へ進む（移動・到着）</span>
+            <span class="btn-arrow">&rarr;</span>
+          </button>
+        </div>
+
+      </section>
+
+      <!-- ================= 画面③: 過去のしおり（過去日程・カレンダー） ================= -->
+      <section id="view-undecided" class="view-panel">
+        
+        <div class="section-box">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-section-title">過去の日程・しおり</h2>
+              <span class="summary-sub">前後の日程を切り替えて閲覧できます</span>
+            </div>
+            <button id="btn-open-add-day" class="btn-secondary-small">+ 日程追加</button>
+          </div>
+
+          <!-- 日程ナビゲーション -->
+          <div class="past-day-navigator">
+            <button id="btn-past-prev" class="btn-day-nav" title="前の日へ">&lt;</button>
+            <div class="past-day-center">
+              <select id="select-past-day" class="day-select-dropdown">
+                <!-- JSで動的に日付の選択肢を出力 -->
+              </select>
+            </div>
+            <button id="btn-past-next" class="btn-day-nav" title="次の日へ">&gt;</button>
+          </div>
+
+          <!-- 選択した日程のしおり一覧 -->
+          <div id="past-day-schedule-list" class="schedule-timeline mt-3">
+            <!-- JSで動的に予定一覧を出力 -->
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- 下部3ボタン ナビゲーションメニュー -->
+    <nav class="bottom-nav">
+      <button class="nav-button" data-view="schedule">
+        <span class="nav-indicator"></span>
+        <span class="nav-text">しおり</span>
+      </button>
+
+      <button class="nav-button active" data-view="now-next">
+        <span class="nav-indicator"></span>
+        <span class="nav-text">いま・つぎ</span>
+      </button>
+
+      <button class="nav-button" data-view="undecided">
+        <span class="nav-indicator"></span>
+        <span class="nav-text">過去のしおり</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- ポップアップモーダル: 予定カードをタップした時のメニュー -->
+  <div id="modal-spot-action" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="spot-action-title" class="modal-title">予定の操作</h3>
+        <button id="btn-close-spot-action" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="spot-action-body">
+        <div id="spot-action-info" class="spot-action-info-box">
+          <div id="spot-action-name" class="action-item-name"></div>
+          <div id="spot-action-time" class="action-item-time"></div>
+        </div>
+        <div class="spot-action-buttons">
+          <button id="btn-set-as-current" class="btn-action-primary">
+            <div class="btn-action-text">
+              <strong>現在の予定にする</strong>
+              <small>しおりで赤く囲み、現在地として設定します</small>
+            </div>
+          </button>
+          
+          <button id="btn-open-edit-content" class="btn-action-secondary">
+            <div class="btn-action-text">
+              <strong>内容を変更する</strong>
+              <small>時間、場所名、乗車・降車駅などを編集します</small>
+            </div>
+          </button>
+
+          <button id="btn-delete-from-action" class="btn-action-danger">
+            <div class="btn-action-text">
+              <strong>この予定を削除する</strong>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- モーダル: 予定・交通機関の追加・編集 -->
+  <div id="modal-edit-item" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-title">予定の追加</h3>
+        <button id="btn-close-modal" class="modal-close-btn">&times;</button>
+      </div>
+      <form id="schedule-form" class="modal-body">
+        <input type="hidden" id="form-item-id">
+        
+        <!-- 種別選択: 場所・予定名 or 交通機関 -->
+        <div class="form-group">
+          <label class="form-label-bold">追加する情報の種類 *</label>
+          <div class="type-selector-tabs">
+            <label class="type-tab-label">
+              <input type="radio" name="entry-type" value="spot" checked id="radio-type-spot">
+              <span class="type-tab-card">場所・予定名</span>
+            </label>
+            <label class="type-tab-label">
+              <input type="radio" name="entry-type" value="transit" id="radio-type-transit">
+              <span class="type-tab-card">交通機関・移動</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 1. 場所・予定名の場合の入力 -->
+        <div id="field-spot-container" class="form-group">
+          <label for="form-title">場所・予定名 *</label>
+          <input type="text" id="form-title" placeholder="例: 清水寺、祇園でランチ" class="input-text">
+        </div>
+
+        <!-- 2. 交通機関の場合の入力（乗車駅と降車駅の欄） -->
+        <div id="field-transit-container" class="transit-container hidden">
+          <div class="form-group">
+            <label for="form-transit-line">路線・交通手段（任意）</label>
+            <input type="text" id="form-transit-line" placeholder="例: JR奈良線、市バス206系統、徒歩" class="input-text">
+            <div class="transit-chips mt-1">
+              <button type="button" class="transit-chip" data-val="JR">JR</button>
+              <button type="button" class="transit-chip" data-val="地下鉄">地下鉄</button>
+              <button type="button" class="transit-chip" data-val="京阪">京阪</button>
+              <button type="button" class="transit-chip" data-val="阪急">阪急</button>
+              <button type="button" class="transit-chip" data-val="市バス">市バス</button>
+              <button type="button" class="transit-chip" data-val="徒歩">徒歩</button>
+              <button type="button" class="transit-chip" data-val="タクシー">タクシー</button>
+            </div>
+          </div>
+
+          <div class="form-row mt-2">
+            <div class="form-group flex-1">
+              <label for="form-departure-station">乗車駅（出発地） *</label>
+              <input type="text" id="form-departure-station" placeholder="例: 京都駅" class="input-text">
+            </div>
+            <div class="station-arrow-col">&rarr;</div>
+            <div class="form-group flex-1">
+              <label for="form-arrival-station">降車駅（到着地） *</label>
+              <input type="text" id="form-arrival-station" placeholder="例: 稲荷駅" class="input-text">
+            </div>
+          </div>
+        </div>
+
+        <!-- 時間入力 -->
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="form-start-time" id="label-start-time">開始・出発時刻 *</label>
+            <input type="time" id="form-start-time" required class="input-text">
+          </div>
+          <div class="form-group flex-1">
+            <label for="form-end-time" id="label-end-time">終了・到着時刻</label>
+            <input type="time" id="form-end-time" class="input-text">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="form-memo">メモ（番線・注意点・予約など）</label>
+          <input type="text" id="form-memo" placeholder="例: 8番のりば、予約済みなど" class="input-text">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="btn-delete-item" class="btn-delete hidden">削除</button>
+          <div class="flex-spacer"></div>
+          <button type="button" id="btn-cancel-modal" class="btn-cancel">キャンセル</button>
+          <button type="submit" class="btn-submit">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- モーダル: 新しい日程の追加 -->
+  <div id="modal-add-day" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>新しい日程を追加</h3>
+        <button id="btn-close-day-modal" class="modal-close-btn">&times;</button>
+      </div>
+      <form id="day-form" class="modal-body">
+        <div class="form-group">
+          <label for="new-day-date">日付 *</label>
+          <input type="date" id="new-day-date" required class="input-text">
+        </div>
+        <div class="modal-actions">
+          <div class="flex-spacer"></div>
+          <button type="button" id="btn-cancel-day-modal" class="btn-cancel">キャンセル</button>
+          <button type="submit" class="btn-submit">追加する</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
