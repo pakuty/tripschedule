@@ -10,11 +10,13 @@
   <link rel="icon" href="icon.png">
   <link rel="manifest" href="manifest.json">
   <title>日程管理アプリ</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=7">
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW reg error', err));
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+          reg.update(); // 起動時に常に最新バージョンをチェック
+        }).catch(err => console.log('SW reg error', err));
       });
     }
   </script>
@@ -328,6 +330,6 @@
   <!-- 操作フィードバック用トースト通知 -->
   <div id="app-toast" class="app-toast"></div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>

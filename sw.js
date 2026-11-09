@@ -1,4 +1,4 @@
-const CACHE_NAME = 'schedule-app-v6';
+const CACHE_NAME = 'schedule-app-v7';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -26,15 +26,30 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Network-First 戦略:
+// オンライン時は常にGitHubから最新を取得してキャッシュを更新し、
+// オフライン（機内モード・通信不可時）のみキャッシュを返す
 self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).catch(() => {
-        return caches.match('./index.html');
-      });
-    })
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          return caches.match('./index.html');
+        });
+      })
   );
 });
