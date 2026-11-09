@@ -105,6 +105,10 @@ function getTodayDay() {
 }
 
 // --- 時刻・日付ユーティリティ ---
+function parseTimeToMinutes(timeStr) {
+  return getMinutesFromTimeString(timeStr);
+}
+
 function getMinutesFromTimeString(timeStr) {
   if (!timeStr) return 0;
   const parts = timeStr.split(':');
@@ -261,8 +265,32 @@ function initApp() {
     dom.headerDateSub.textContent = formatFullDate(today.date);
   }
 
+  // 時間が重複している予定のID一覧を取得
+  function getOverlappingItemIds(items) {
+    const overlappingIds = new Set();
+    if (!items || items.length < 2) return overlappingIds;
+
+    for (let i = 0; i < items.length; i++) {
+      const itemA = items[i];
+      const startA = getMinutesFromTimeString(itemA.startTime);
+      const endA = itemA.endTime ? getMinutesFromTimeString(itemA.endTime) : startA + 60;
+
+      for (let j = i + 1; j < items.length; j++) {
+        const itemB = items[j];
+        const startB = getMinutesFromTimeString(itemB.startTime);
+        const endB = itemB.endTime ? getMinutesFromTimeString(itemB.endTime) : startB + 60;
+
+        if (startA < endB && startB < endA) {
+          overlappingIds.add(itemA.id);
+          overlappingIds.add(itemB.id);
+        }
+      }
+    }
+    return overlappingIds;
+  }
+
   // カードのHTML生成ヘルパー
-  function createScheduleCardHtml(item) {
+  function createScheduleCardHtml(item, isOverlapping) {
     const timeRange = item.endTime ? `${item.startTime} 〜 ${item.endTime}` : item.startTime;
     const typeBadge = item.type === 'transit'
       ? '<span class="type-badge badge-transit">移動</span>'
@@ -295,9 +323,14 @@ function initApp() {
       `;
     }
 
+    const overlapBadge = isOverlapping ? '<span class="overlap-badge">時間が重複</span>' : '';
+
     return `
       <div class="card-top-row">
-        <div>${typeBadge}</div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          ${typeBadge}
+          ${overlapBadge}
+        </div>
         <div style="display: flex; align-items: center; gap: 8px;">
           <span class="schedule-time">${timeRange}</span>
           <div class="drag-grip-icon" title="長押しで移動">
@@ -330,6 +363,8 @@ function initApp() {
       return;
     }
 
+    const overlappingIds = getOverlappingItemIds(items);
+
     items.forEach((item, index) => {
       const card = document.createElement('div');
       card.className = 'schedule-card';
@@ -340,6 +375,7 @@ function initApp() {
 
       const isCurrent = (index === today.currentSpotIndex);
       const isPast = (index < today.currentSpotIndex);
+      const isOverlapping = overlappingIds.has(item.id);
 
       if (isCurrent) {
         card.classList.add('is-current');
@@ -347,7 +383,11 @@ function initApp() {
         card.classList.add('is-past');
       }
 
-      card.innerHTML = createScheduleCardHtml(item);
+      if (isOverlapping) {
+        card.classList.add('is-overlapping');
+      }
+
+      card.innerHTML = createScheduleCardHtml(item, isOverlapping);
 
             setupCardDragAndDrop(card, index, state.todayIndex, dom.scheduleList);
 
@@ -497,6 +537,8 @@ function initApp() {
         </div>
       `;
     } else {
+      const overlappingIds = getOverlappingItemIds(items);
+
       items.forEach((item, index) => {
         const card = document.createElement('div');
         card.className = 'schedule-card';
@@ -505,11 +547,17 @@ function initApp() {
           card.classList.add('is-transit');
         }
 
+        const isOverlapping = overlappingIds.has(item.id);
+
         if (state.pastViewDayIndex === state.todayIndex && index === selectedDay.currentSpotIndex) {
           card.classList.add('is-current');
         }
 
-        card.innerHTML = createScheduleCardHtml(item);
+        if (isOverlapping) {
+          card.classList.add('is-overlapping');
+        }
+
+        card.innerHTML = createScheduleCardHtml(item, isOverlapping);
 
               setupCardDragAndDrop(card, index, state.pastViewDayIndex, dom.pastDayScheduleList);
 
@@ -626,6 +674,20 @@ function initApp() {
     }
   }
 
+  // 開始時間が終了時間より後になった場合、終了時間を一旦1時間後に自動設定
+  dom.formStartTime.addEventListener('change', () => {
+    const startStr = dom.formStartTime.value;
+    if (!startStr) return;
+    const startMin = getMinutesFromTimeString(startStr);
+    const endStr = dom.formEndTime.value;
+    const endMin = endStr ? getMinutesFromTimeString(endStr) : 0;
+
+    if (!endStr || startMin >= endMin) {
+      const autoEndMin = Math.min(startMin + 60, 1439);
+      dom.formEndTime.value = formatMinutesToTimeString(autoEndMin);
+    }
+  });
+
   dom.radioTypeSpot.addEventListener('change', updateFormTypeFields);
   dom.radioTypeTransit.addEventListener('change', updateFormTypeFields);
 
@@ -731,8 +793,22 @@ function initApp() {
 
     if (!startTime) return;
 
+    // バリデーション: 開始時間 >= 終了時間 の場合は保存させない
+    if (endTime) {
+      const startMin = getMinutesFromTimeString(startTime);
+      const endMin = getMinutesFromTimeString(endTime);
+      if (startMin >= endMin) {
+        alert('終了時刻は開始時刻より後の時間を設定してください。');
+        return;
+      }
+    }
+
     const today = getTodayDay();
     if (!today.items) today.items = [];
+
+    // 現在選択中の予定IDを記憶（ソートで位置が変わっても赤枠ハイライトを正しく追従させるため）
+    const currentSpot = today.items[today.currentSpotIndex];
+    const currentSpotId = currentSpot ? currentSpot.id : null;
 
     if (id) {
       const index = today.items.findIndex(s => s.id === id);
@@ -766,9 +842,19 @@ function initApp() {
         memo
       };
       today.items.push(newItem);
-      today.items.sort((a, b) => {
-        return getMinutesFromTimeString(a.startTime) - getMinutesFromTimeString(b.startTime);
-      });
+    }
+
+    // 前の予定が後ろの予定より後の時間に変更された場合も自動で場所を入れ替え（時系列ソート）
+    today.items.sort((a, b) => {
+      return getMinutesFromTimeString(a.startTime) - getMinutesFromTimeString(b.startTime);
+    });
+
+    // 赤枠ハイライトの追従
+    if (currentSpotId) {
+      const newCurrIdx = today.items.findIndex(s => s.id === currentSpotId);
+      if (newCurrIdx !== -1) {
+        today.currentSpotIndex = newCurrIdx;
+      }
     }
 
     saveState();
