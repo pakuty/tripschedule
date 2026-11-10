@@ -10,7 +10,7 @@
   <link rel="icon" href="icon.png">
   <link rel="manifest" href="manifest.json">
   <title>日程管理アプリ</title>
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=11">
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -43,23 +43,45 @@
     <!-- メイン表示領域 -->
     <main class="app-content">
 
-      <!-- ================= 画面①: しおり（本日の日程限定） ================= -->
+      <!-- ================= 画面①: しおり（日程切り替え・事前作成対応） ================= -->
       <section id="view-schedule" class="view-panel">
         
-        <div class="today-header-card">
-          <div class="today-header-info">
-            <span class="today-badge">本日</span>
-            <span id="main-day-label" class="today-date-text">--月--日</span>
-            <span id="main-day-spots-count" class="today-count-text">0件の予定</span>
+        <!-- 日程ヘッダーカード（前後の日程切り替え・新規日程追加・日程変更） -->
+        <div class="schedule-day-card">
+          <!-- 上段: 日程ナビゲーションバー -->
+          <div class="schedule-day-nav-row">
+            <button id="btn-schedule-prev" class="btn-day-nav" title="前の日へ" aria-label="前の日へ">&lt;</button>
+            <div class="schedule-day-center">
+              <span id="schedule-day-badge" class="day-rel-badge badge-today">本日</span>
+              <div class="schedule-select-wrapper">
+                <select id="select-schedule-day" class="schedule-day-select">
+                  <!-- JSで動的に全日程の選択肢を出力 -->
+                </select>
+                <span class="select-dropdown-caret">&#9662;</span>
+              </div>
+            </div>
+            <button id="btn-schedule-next" class="btn-day-nav" title="次の日へ" aria-label="次の日へ">&gt;</button>
+            <button id="btn-open-add-day-schedule" class="btn-day-add" title="明日や明後日などの新しい日程を追加">+ 日程</button>
           </div>
-          <button id="btn-open-add-schedule" class="btn-primary-small">+ 予定を追加</button>
+
+          <!-- 下段: 日程詳細情報とアクション -->
+          <div class="schedule-day-sub-row">
+            <div class="schedule-day-meta">
+              <span id="main-day-label" class="schedule-full-date">--月--日(--)</span>
+              <span id="main-day-spots-count" class="today-count-text">0件の予定</span>
+            </div>
+            <div class="schedule-day-actions">
+              <button id="btn-open-edit-day" class="btn-sub-link" title="この日程の日付変更・削除">日程の変更</button>
+              <button id="btn-open-add-schedule" class="btn-primary-small">+ 予定を追加</button>
+            </div>
+          </div>
         </div>
 
         <p class="timeline-hint">予定を押すと操作メニュー、長押しで並び替えできます</p>
 
-        <!-- 本日のタイムライン一覧 -->
+        <!-- 選択された日程のタイムライン一覧 -->
         <div id="schedule-list" class="schedule-timeline">
-          <!-- JSで動的に本日の予定を出力 -->
+          <!-- JSで動的に予定を出力 -->
         </div>
       </section>
 
@@ -310,7 +332,7 @@
     <div class="modal-backdrop"></div>
     <div class="modal-card">
       <div class="modal-header">
-        <h3>新しい日程を追加</h3>
+        <h3 id="modal-add-day-title">新しい日程を追加</h3>
         <button id="btn-close-day-modal" class="modal-close-btn">&times;</button>
       </div>
       <form id="day-form" class="modal-body">
@@ -327,9 +349,32 @@
     </div>
   </div>
 
+  <!-- モーダル: 日程の変更・削除 -->
+  <div id="modal-edit-day" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-edit-day-title">日程の変更</h3>
+        <button id="btn-close-edit-day-modal" class="modal-close-btn">&times;</button>
+      </div>
+      <form id="edit-day-form" class="modal-body">
+        <div class="form-group">
+          <label for="edit-day-date">日付 *</label>
+          <input type="date" id="edit-day-date" required class="input-text">
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="btn-delete-day" class="btn-delete">この日程を削除</button>
+          <div class="flex-spacer"></div>
+          <button type="button" id="btn-cancel-edit-day-modal" class="btn-cancel">キャンセル</button>
+          <button type="submit" class="btn-submit">変更を保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- 操作フィードバック用トースト通知 -->
   <div id="app-toast" class="app-toast"></div>
 
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>

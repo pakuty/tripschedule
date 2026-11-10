@@ -61,6 +61,7 @@ const CLEAN_DEFAULT_DAYS = [
 let state = {
   days: [],
   todayIndex: 0,
+  scheduleViewDayIndex: 0, // しおり画面で現在表示中の日程インデックス
   pastViewDayIndex: 0,
   activeView: 'schedule',
   selectedActionItem: null
@@ -77,6 +78,7 @@ function loadState() {
 
     state.days = savedDays ? JSON.parse(savedDays) : JSON.parse(JSON.stringify(CLEAN_DEFAULT_DAYS));
     state.todayIndex = savedTodayIdx !== null ? parseInt(savedTodayIdx, 10) : 0;
+    state.scheduleViewDayIndex = state.todayIndex;
     state.pastViewDayIndex = 0;
   } catch (e) {
     state.days = JSON.parse(JSON.stringify(CLEAN_DEFAULT_DAYS));
@@ -104,6 +106,17 @@ function getTodayDay() {
   return state.days[state.todayIndex];
 }
 
+// しおり画面で現在選択・表示中の日程を取得
+function getCurrentScheduleDay() {
+  if (!state.days || state.days.length === 0) {
+    state.days = JSON.parse(JSON.stringify(CLEAN_DEFAULT_DAYS));
+  }
+  if (state.scheduleViewDayIndex < 0 || state.scheduleViewDayIndex >= state.days.length) {
+    state.scheduleViewDayIndex = Math.min(Math.max(0, state.todayIndex), state.days.length - 1);
+  }
+  return state.days[state.scheduleViewDayIndex];
+}
+
 // --- 時刻・日付ユーティリティ ---
 function parseTimeToMinutes(timeStr) {
   return getMinutesFromTimeString(timeStr);
@@ -125,6 +138,40 @@ function formatMinutesToTimeString(totalMinutes) {
 function getCurrentMinutes() {
   const now = new Date();
   return now.getHours() * 60 + now.getMinutes();
+}
+
+const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+
+function formatDateWithWeekday(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    const w = WEEKDAYS[d.getDay()];
+    return `${parseInt(parts[1], 10)}月${parseInt(parts[2], 10)}日(${w})`;
+  }
+  return dateStr;
+}
+
+function getDayDiffFromToday(dateStr) {
+  if (!dateStr) return 0;
+  const todayStr = getInitialTodayDate();
+  const d1 = new Date(dateStr.replace(/-/g, '/'));
+  const d2 = new Date(todayStr.replace(/-/g, '/'));
+  d1.setHours(0, 0, 0, 0);
+  d2.setHours(0, 0, 0, 0);
+  const diffTime = d1.getTime() - d2.getTime();
+  return Math.round(diffTime / (1000 * 60 * 60 * 24));
+}
+
+function getRelativeDayBadgeInfo(dateStr) {
+  const diff = getDayDiffFromToday(dateStr);
+  if (diff === 0) return { text: '本日', className: 'badge-today' };
+  if (diff === 1) return { text: '明日', className: 'badge-tomorrow' };
+  if (diff === 2) return { text: '明後日', className: 'badge-day-after' };
+  if (diff > 2) return { text: `${diff}日後`, className: 'badge-future' };
+  if (diff === -1) return { text: '昨日', className: 'badge-past' };
+  return { text: `${Math.abs(diff)}日前`, className: 'badge-past' };
 }
 
 function formatDateOnly(dateStr) {
@@ -157,7 +204,13 @@ function initApp() {
       'undecided': document.getElementById('view-undecided')
     },
     
-    // しおり画面
+    // しおり画面（日程ナビゲーション & アクション）
+    btnSchedulePrev: document.getElementById('btn-schedule-prev'),
+    scheduleDayBadge: document.getElementById('schedule-day-badge'),
+    selectScheduleDay: document.getElementById('select-schedule-day'),
+    btnScheduleNext: document.getElementById('btn-schedule-next'),
+    btnOpenAddDaySchedule: document.getElementById('btn-open-add-day-schedule'),
+    btnOpenEditDay: document.getElementById('btn-open-edit-day'),
     mainDayLabel: document.getElementById('main-day-label'),
     mainDaySpotsCount: document.getElementById('main-day-spots-count'),
     scheduleList: document.getElementById('schedule-list'),
@@ -224,7 +277,15 @@ function initApp() {
     dayForm: document.getElementById('day-form'),
     newDayDate: document.getElementById('new-day-date'),
     btnCloseDayModal: document.getElementById('btn-close-day-modal'),
-    btnCancelDayModal: document.getElementById('btn-cancel-day-modal')
+    btnCancelDayModal: document.getElementById('btn-cancel-day-modal'),
+
+    // 日程変更・削除モーダル
+    modalEditDay: document.getElementById('modal-edit-day'),
+    editDayForm: document.getElementById('edit-day-form'),
+    editDayDate: document.getElementById('edit-day-date'),
+    btnDeleteDay: document.getElementById('btn-delete-day'),
+    btnCloseEditDayModal: document.getElementById('btn-close-edit-day-modal'),
+    btnCancelEditDayModal: document.getElementById('btn-cancel-edit-day-modal')
   };
 
   function switchView(viewName) {
@@ -346,18 +407,53 @@ function initApp() {
   }
 
   function renderSchedule() {
-    const today = getTodayDay();
-    const items = today.items || [];
+    const currentDay = getCurrentScheduleDay();
+    const items = currentDay.items || [];
 
-    dom.mainDayLabel.textContent = formatDateOnly(today.date);
+    // 1. 日程プルダウンの選択肢を全日程で再生成
+    if (dom.selectScheduleDay) {
+      dom.selectScheduleDay.innerHTML = '';
+      state.days.forEach((day, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx.toString();
+        const badgeInfo = getRelativeDayBadgeInfo(day.date);
+        const count = day.items ? day.items.length : 0;
+        opt.textContent = `${formatDateWithWeekday(day.date)} [${badgeInfo.text}] (${count}件)`;
+        if (idx === state.scheduleViewDayIndex) {
+          opt.selected = true;
+        }
+        dom.selectScheduleDay.appendChild(opt);
+      });
+    }
+
+    // 2. 前後ボタンの活性・非活性制御
+    if (dom.btnSchedulePrev) {
+      dom.btnSchedulePrev.disabled = (state.scheduleViewDayIndex <= 0);
+      dom.btnSchedulePrev.style.opacity = (state.scheduleViewDayIndex <= 0) ? '0.3' : '1';
+    }
+    if (dom.btnScheduleNext) {
+      dom.btnScheduleNext.disabled = (state.scheduleViewDayIndex >= state.days.length - 1);
+      dom.btnScheduleNext.style.opacity = (state.scheduleViewDayIndex >= state.days.length - 1) ? '0.3' : '1';
+    }
+
+    // 3. 相対関係バッジ（本日、明日、明後日など）
+    if (dom.scheduleDayBadge) {
+      const badgeInfo = getRelativeDayBadgeInfo(currentDay.date);
+      dom.scheduleDayBadge.textContent = badgeInfo.text;
+      dom.scheduleDayBadge.className = `day-rel-badge ${badgeInfo.className}`;
+    }
+
+    // 4. 日付詳細ラベルと予定件数
+    dom.mainDayLabel.textContent = formatDateWithWeekday(currentDay.date);
     dom.mainDaySpotsCount.textContent = `${items.length}件の予定`;
 
+    // 5. 予定カード一覧の描画
     dom.scheduleList.innerHTML = '';
 
     if (items.length === 0) {
       dom.scheduleList.innerHTML = `
         <div style="text-align: center; padding: 40px 20px; color: #8C939E; font-size: 13px;">
-          予定はまだ登録されていません。<br>右上の「+ 予定を追加」から登録してください。
+          この日の予定はまだありません。<br>右上の「+ 予定を追加」から登録してください。
         </div>
       `;
       return;
@@ -373,8 +469,9 @@ function initApp() {
         card.classList.add('is-transit');
       }
 
-      const isCurrent = (index === today.currentSpotIndex);
-      const isPast = (index < today.currentSpotIndex);
+      // 「本日」を表示している場合のみ、現在スポットや過去スポットのスタイルを適用
+      const isCurrent = (state.scheduleViewDayIndex === state.todayIndex && index === currentDay.currentSpotIndex);
+      const isPast = (state.scheduleViewDayIndex === state.todayIndex && index < currentDay.currentSpotIndex);
       const isOverlapping = overlappingIds.has(item.id);
 
       if (isCurrent) {
@@ -389,14 +486,15 @@ function initApp() {
 
       card.innerHTML = createScheduleCardHtml(item, isOverlapping);
 
-            setupCardDragAndDrop(card, index, state.todayIndex, dom.scheduleList);
+      // 長押しドラッグ＆ドロップ並び替えの登録
+      setupCardDragAndDrop(card, index, state.scheduleViewDayIndex, dom.scheduleList);
 
       card.addEventListener('click', () => {
         if (card._didDrag) {
           card._didDrag = false;
           return;
         }
-        openSpotActionPopup(item, index, state.todayIndex);
+        openSpotActionPopup(item, index, state.scheduleViewDayIndex);
       });
 
       dom.scheduleList.appendChild(card);
@@ -698,7 +796,11 @@ function initApp() {
   });
 
   function openAddModal() {
-    dom.modalTitle.textContent = '予定・交通の追加';
+    const currentDay = getCurrentScheduleDay();
+    const badgeInfo = getRelativeDayBadgeInfo(currentDay.date);
+    const dateLabel = formatDateOnly(currentDay.date);
+    dom.modalTitle.textContent = `予定・交通の追加 (${dateLabel} ${badgeInfo.text})`;
+    
     dom.formItemId.value = '';
     dom.formTitle.value = '';
     dom.formNearestStation.value = '';
@@ -709,8 +811,6 @@ function initApp() {
     dom.radioTypeSpot.checked = true;
     updateFormTypeFields();
     
-    const today = getTodayDay();
-    const items = today.items || [];
     // 初期値をご要望通り「現在の時間」に設定
     const now = new Date();
     const curH = String(now.getHours()).padStart(2, '0');
@@ -803,18 +903,18 @@ function initApp() {
       }
     }
 
-    const today = getTodayDay();
-    if (!today.items) today.items = [];
+    const currentDay = getCurrentScheduleDay();
+    if (!currentDay.items) currentDay.items = [];
 
     // 現在選択中の予定IDを記憶（ソートで位置が変わっても赤枠ハイライトを正しく追従させるため）
-    const currentSpot = today.items[today.currentSpotIndex];
+    const currentSpot = currentDay.items[currentDay.currentSpotIndex];
     const currentSpotId = currentSpot ? currentSpot.id : null;
 
     if (id) {
-      const index = today.items.findIndex(s => s.id === id);
+      const index = currentDay.items.findIndex(s => s.id === id);
       if (index !== -1) {
-        today.items[index] = {
-          ...today.items[index],
+        currentDay.items[index] = {
+          ...currentDay.items[index],
           type,
           title,
           nearestStation,
@@ -841,19 +941,19 @@ function initApp() {
         endTime,
         memo
       };
-      today.items.push(newItem);
+      currentDay.items.push(newItem);
     }
 
     // 前の予定が後ろの予定より後の時間に変更された場合も自動で場所を入れ替え（時系列ソート）
-    today.items.sort((a, b) => {
+    currentDay.items.sort((a, b) => {
       return getMinutesFromTimeString(a.startTime) - getMinutesFromTimeString(b.startTime);
     });
 
     // 赤枠ハイライトの追従
     if (currentSpotId) {
-      const newCurrIdx = today.items.findIndex(s => s.id === currentSpotId);
+      const newCurrIdx = currentDay.items.findIndex(s => s.id === currentSpotId);
       if (newCurrIdx !== -1) {
-        today.currentSpotIndex = newCurrIdx;
+        currentDay.currentSpotIndex = newCurrIdx;
       }
     }
 
@@ -865,10 +965,10 @@ function initApp() {
   dom.btnDeleteItem.addEventListener('click', () => {
     const id = dom.formItemId.value;
     if (!id) return;
-    const today = getTodayDay();
-    today.items = today.items.filter(s => s.id !== id);
-    if (today.currentSpotIndex >= today.items.length) {
-      today.currentSpotIndex = Math.max(0, today.items.length - 1);
+    const currentDay = getCurrentScheduleDay();
+    currentDay.items = currentDay.items.filter(s => s.id !== id);
+    if (currentDay.currentSpotIndex >= currentDay.items.length) {
+      currentDay.currentSpotIndex = Math.max(0, currentDay.items.length - 1);
     }
     saveState();
     closeModal();
@@ -879,19 +979,80 @@ function initApp() {
   dom.btnCancelModal.addEventListener('click', closeModal);
   dom.modalEditItem.querySelector('.modal-backdrop').addEventListener('click', closeModal);
 
-  // 日程追加
-  dom.btnOpenAddDay.addEventListener('click', () => {
-    const now = new Date();
-    now.setDate(now.getDate() + state.days.length);
-    const nextDate = now.toISOString().split('T')[0];
-    dom.newDayDate.value = nextDate;
-    dom.modalAddDay.classList.remove('hidden');
-  });
+  // ===================================================
+  // 日程ナビゲーション & 日程追加・変更イベントリスナー
+  // ===================================================
 
+  // しおり画面の日程切り替え（前へ）
+  if (dom.btnSchedulePrev) {
+    dom.btnSchedulePrev.addEventListener('click', () => {
+      if (state.scheduleViewDayIndex > 0) {
+        state.scheduleViewDayIndex--;
+        renderSchedule();
+      }
+    });
+  }
+
+  // しおり画面の日程切り替え（次へ）
+  if (dom.btnScheduleNext) {
+    dom.btnScheduleNext.addEventListener('click', () => {
+      if (state.scheduleViewDayIndex < state.days.length - 1) {
+        state.scheduleViewDayIndex++;
+        renderSchedule();
+      }
+    });
+  }
+
+  // しおり画面の日程切り替え（プルダウン）
+  if (dom.selectScheduleDay) {
+    dom.selectScheduleDay.addEventListener('change', (e) => {
+      state.scheduleViewDayIndex = parseInt(e.target.value, 10);
+      renderSchedule();
+    });
+  }
+
+  // 新しい日程の追加モーダルを開く関数（明日や翌日を初期値に）
+  function openAddDayModal() {
+    let baseDate = new Date();
+    if (state.days && state.days.length > 0) {
+      // 登録されている中で最も遅い日付を探す
+      const lastDay = state.days[state.days.length - 1];
+      const parsed = new Date(lastDay.date.replace(/-/g, '/'));
+      if (!isNaN(parsed.getTime())) {
+        baseDate = parsed;
+      }
+    }
+    // その翌日（+1日）を初期値にセット
+    baseDate.setDate(baseDate.getDate() + 1);
+    const y = baseDate.getFullYear();
+    const m = String(baseDate.getMonth() + 1).padStart(2, '0');
+    const d = String(baseDate.getDate()).padStart(2, '0');
+    dom.newDayDate.value = `${y}-${m}-${d}`;
+    dom.modalAddDay.classList.remove('hidden');
+  }
+
+  if (dom.btnOpenAddDaySchedule) {
+    dom.btnOpenAddDaySchedule.addEventListener('click', openAddDayModal);
+  }
+  if (dom.btnOpenAddDay) {
+    dom.btnOpenAddDay.addEventListener('click', openAddDayModal);
+  }
+
+  // 日程追加の保存
   dom.dayForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const date = dom.newDayDate.value;
     if (!date) return;
+
+    // すでに同日が存在するかチェック
+    const existingIndex = state.days.findIndex(d => d.date === date);
+    if (existingIndex !== -1) {
+      state.scheduleViewDayIndex = existingIndex;
+      dom.modalAddDay.classList.add('hidden');
+      render();
+      showToast(`${formatDateOnly(date)} は既に存在します`);
+      return;
+    }
 
     const newDay = {
       id: 'day-' + Date.now(),
@@ -906,16 +1067,112 @@ function initApp() {
       const timeB = new Date(b.date.replace(/-/g, '/')).getTime();
       return timeA - timeB;
     });
-    
-    state.pastViewDayIndex = state.days.findIndex(d => d.id === newDay.id);
+
+    // 追加した日のインデックスに移動
+    state.scheduleViewDayIndex = state.days.findIndex(d => d.id === newDay.id);
+    state.pastViewDayIndex = state.scheduleViewDayIndex;
+
+    // 本日のインデックスも再特定
+    const todayStr = getInitialTodayDate();
+    const tIdx = state.days.findIndex(d => d.date === todayStr);
+    state.todayIndex = tIdx !== -1 ? tIdx : 0;
+
     saveState();
     dom.modalAddDay.classList.add('hidden');
     render();
+    showToast(`${formatDateOnly(date)} の日程を追加しました`);
   });
 
   dom.btnCloseDayModal.addEventListener('click', () => dom.modalAddDay.classList.add('hidden'));
   dom.btnCancelDayModal.addEventListener('click', () => dom.modalAddDay.classList.add('hidden'));
   dom.modalAddDay.querySelector('.modal-backdrop').addEventListener('click', () => dom.modalAddDay.classList.add('hidden'));
+
+  // 日程変更・削除モーダルの操作
+  function openEditDayModal() {
+    const currentDay = getCurrentScheduleDay();
+    dom.editDayDate.value = currentDay.date;
+    
+    // 日程が1つだけの場合は削除を非表示（最低1日は残す）
+    if (state.days.length <= 1) {
+      dom.btnDeleteDay.style.display = 'none';
+    } else {
+      dom.btnDeleteDay.style.display = 'inline-block';
+    }
+
+    dom.modalEditDay.classList.remove('hidden');
+  }
+
+  if (dom.btnOpenEditDay) {
+    dom.btnOpenEditDay.addEventListener('click', openEditDayModal);
+  }
+
+  // 日程変更の保存
+  if (dom.editDayForm) {
+    dom.editDayForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const newDate = dom.editDayDate.value;
+      if (!newDate) return;
+
+      const currentDay = getCurrentScheduleDay();
+      currentDay.date = newDate;
+
+      state.days.sort((a, b) => {
+        const timeA = new Date(a.date.replace(/-/g, '/')).getTime();
+        const timeB = new Date(b.date.replace(/-/g, '/')).getTime();
+        return timeA - timeB;
+      });
+
+      state.scheduleViewDayIndex = state.days.findIndex(d => d.id === currentDay.id);
+      
+      const todayStr = getInitialTodayDate();
+      const tIdx = state.days.findIndex(d => d.date === todayStr);
+      state.todayIndex = tIdx !== -1 ? tIdx : 0;
+
+      saveState();
+      dom.modalEditDay.classList.add('hidden');
+      render();
+      showToast('日程を変更しました');
+    });
+  }
+
+  // 日程の削除
+  if (dom.btnDeleteDay) {
+    dom.btnDeleteDay.addEventListener('click', () => {
+      if (state.days.length <= 1) {
+        alert('これ以上日程を削除することはできません。');
+        return;
+      }
+      const currentDay = getCurrentScheduleDay();
+      const dateLabel = formatDateOnly(currentDay.date);
+      if (!confirm(`${dateLabel}の日程（登録されている予定も含みます）を削除しますか？`)) {
+        return;
+      }
+
+      state.days = state.days.filter(d => d.id !== currentDay.id);
+      if (state.scheduleViewDayIndex >= state.days.length) {
+        state.scheduleViewDayIndex = Math.max(0, state.days.length - 1);
+      }
+
+      const todayStr = getInitialTodayDate();
+      const tIdx = state.days.findIndex(d => d.date === todayStr);
+      state.todayIndex = tIdx !== -1 ? tIdx : 0;
+
+      saveState();
+      dom.modalEditDay.classList.add('hidden');
+      render();
+      showToast('日程を削除しました');
+    });
+  }
+
+  if (dom.btnCloseEditDayModal) {
+    dom.btnCloseEditDayModal.addEventListener('click', () => dom.modalEditDay.classList.add('hidden'));
+  }
+  if (dom.btnCancelEditDayModal) {
+    dom.btnCancelEditDayModal.addEventListener('click', () => dom.modalEditDay.classList.add('hidden'));
+  }
+  if (dom.modalEditDay) {
+    dom.modalEditDay.querySelector('.modal-backdrop').addEventListener('click', () => dom.modalEditDay.classList.add('hidden'));
+  }
 
   // ナビゲーション切り替え
   dom.navButtons.forEach(btn => {
